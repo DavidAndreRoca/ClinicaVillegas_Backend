@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: app
+
+  jpa:
+    database: POSTGRESQL
+    hibernate.ddl-auto: create-drop
+    show-sql: true
+
+  datasource:
+    platform: postgres
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USER}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  task:
+    scheduling:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.aop: DEBUG
+
+app:
+  frontend:
+    url: ${FRONT_END_URL}
+
+  reniec:
+    url: ${RENIEC_URL}
+    token: ${RENIEC_TOKEN}
+
+  jwt:
+    secret: ${JWT_SECRET}
