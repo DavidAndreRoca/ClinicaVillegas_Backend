@@ -10,7 +10,7 @@ spring:
   datasource:
     platform: postgres
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/testdb
     username: ${DB_USER}
     password: ${DB_PASSWORD}
 
@@ -45,3 +45,4 @@ app:
 
   jwt:
     secret: ${JWT_SECRET}
+
