@@ -1,0 +1,161 @@
+package com.clinicavillegas.app.appointment.services.impl;
+
+import com.clinicavillegas.app.appointment.dto.request.CitaReprogramarRequest;
+import com.clinicavillegas.app.appointment.dto.request.CitaRequest;
+import com.clinicavillegas.app.appointment.dto.request.ValidacionCitaRequest;
+import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
+import com.clinicavillegas.app.appointment.mappers.CitaMapper;
+import com.clinicavillegas.app.appointment.models.Cita;
+import com.clinicavillegas.app.appointment.models.Dentista;
+import com.clinicavillegas.app.appointment.models.Tratamiento;
+import com.clinicavillegas.app.appointment.repositories.CitaRepository;
+import com.clinicavillegas.app.appointment.repositories.DentistaRepository;
+import com.clinicavillegas.app.appointment.repositories.TratamientoRepository;
+import com.clinicavillegas.app.appointment.services.CitaService;
+import com.clinicavillegas.app.appointment.specifications.CitaSpecification;
+import com.clinicavillegas.app.user.models.Sexo;
+import com.clinicavillegas.app.user.models.Usuario;
+import com.clinicavillegas.app.user.repositories.TipoDocumentoRepository;
+import com.clinicavillegas.app.user.repositories.UsuarioRepository;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+@Service
+public class DefaultCitaService implements CitaService {
+
+    private final CitaRepository citaRepository;
+
+    private final UsuarioRepository usuarioRepository;
+
+    private final DentistaRepository dentistaRepository;
+
+    private final TratamientoRepository tratamientoRepository;
+
+    private final TipoDocumentoRepository tipoDocumentoRepository;
+
+    public DefaultCitaService(CitaRepository citaRepository, UsuarioRepository usuarioRepository, DentistaRepository dentistaRepository, TratamientoRepository tratamientoRepository, TipoDocumentoRepository tipoDocumentoRepository) {
+        this.citaRepository = citaRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.dentistaRepository = dentistaRepository;
+        this.tratamientoRepository = tratamientoRepository;
+        this.tipoDocumentoRepository = tipoDocumentoRepository;
+    }
+
+
+    public List<CitaResponse> obtenerCitas(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
+                                           LocalDate fechaFin, Long tratamientoId, String sexo) {
+        Specification<Cita> specs = CitaSpecification.conUsuarioId(usuarioId)
+                .and(CitaSpecification.conDentistaId(dentistaId))
+                .and(CitaSpecification.conRangoFecha(fechaInicio, fechaFin))
+                .and(CitaSpecification.conTratamientoId(tratamientoId))
+                .and(CitaSpecification.conSexo(sexo))
+                .and(CitaSpecification.conEstado(estado));
+        if (fechaInicio != null && fechaFin != null) {
+            if (fechaInicio.isAfter(fechaFin)) {
+                throw new IllegalArgumentException("La fecha de inicio debe ser anterior a la de fin");
+            }
+        }
+        List<Cita> citas = citaRepository.findAll(specs);
+        return citas.stream().map(CitaMapper::toDto).toList();
+    }
+
+    public List<Cita> obtenerCitasPorUsuario(Long usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow();
+        return citaRepository.findByUsuario(usuario);
+    }
+
+    public List<Cita> obtenerCitasPorDentista(Long dentistaId) {
+        Dentista dentista = dentistaRepository.findById(dentistaId).orElseThrow();
+        return citaRepository.findByDentista(dentista);
+    }
+
+    public void agregarCita(CitaRequest citaRequest) {
+        Cita cita = Cita.builder()
+                .fecha(citaRequest.getFecha())
+                .hora(citaRequest.getHora())
+                .monto(citaRequest.getMonto())
+                .nombres(citaRequest.getNombres())
+                .apellidoPaterno(citaRequest.getApellidoPaterno())
+                .apellidoMaterno(citaRequest.getApellidoMaterno())
+                .estado("Pendiente")
+                .tipoDocumento(tipoDocumentoRepository.findByAcronimo(citaRequest.getTipoDocumento()).orElseThrow())
+                .numeroIdentidad(citaRequest.getNumeroIdentidad())
+                .sexo(Sexo.valueOf(citaRequest.getSexo()))
+                .fechaNacimiento(citaRequest.getFechaNacimiento())
+                .dentista(dentistaRepository.findById(citaRequest.getDentistaId()).orElseThrow())
+                .usuario(usuarioRepository.findById(citaRequest.getUsuarioId()).orElseThrow())
+                .tratamiento(tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow())
+                .build();
+        citaRepository.save(cita);
+    }
+
+    public void actualizarCita(Long id, CitaRequest citaRequest) {
+        Cita cita = citaRepository.findById(id).orElseThrow();
+        cita.setMonto(citaRequest.getMonto());
+        cita.setHora(citaRequest.getHora());
+        cita.setFecha(citaRequest.getFecha());
+        cita.setNombres(citaRequest.getNombres());
+        cita.setApellidoPaterno(citaRequest.getApellidoPaterno());
+        cita.setApellidoMaterno(citaRequest.getApellidoMaterno());
+        cita.setTipoDocumento(tipoDocumentoRepository.findByNombre(citaRequest.getTipoDocumento()).orElseThrow());
+        cita.setNumeroIdentidad(citaRequest.getNumeroIdentidad());
+        cita.setSexo(Sexo.valueOf(citaRequest.getSexo()));
+        cita.setFechaNacimiento(citaRequest.getFechaNacimiento());
+        cita.setDentista(dentistaRepository.findById(citaRequest.getDentistaId()).orElseThrow());
+        cita.setUsuario(usuarioRepository.findById(citaRequest.getUsuarioId()).orElseThrow());
+        cita.setTratamiento(tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow());
+        citaRepository.save(cita);
+    }
+
+    public void atenderCita(Long id) {
+        citaRepository.findById(id).ifPresent(cita -> {
+            cita.setEstado("Atendida");
+            citaRepository.save(cita);
+        });
+    }
+
+    public void eliminarCita(Long id) {
+        Cita cita = citaRepository.findById(id).orElseThrow();
+        cita.setEstado("Cancelada");
+        citaRepository.save(cita);
+    }
+
+    public boolean validarDisponibilidad(ValidacionCitaRequest request) {
+        LocalDate fecha = LocalDate.parse(request.getFecha());
+        LocalTime hora = LocalTime.parse(request.getHora());
+
+        List<Cita> citasDelDia = citaRepository
+                .findAll(CitaSpecification.conFecha(fecha)
+                        .and(CitaSpecification.conEstado("Pendiente"))
+                        .and(CitaSpecification.conDentistaId(request.getDentistaId())));
+
+        Tratamiento tratamiento = tratamientoRepository.findById(request.getTratamientoId()).orElseThrow();
+
+        Duration duracion = tratamiento.getDuracion();
+        LocalTime horaFinPropuesta = hora.plus(duracion);
+
+        for (Cita cita : citasDelDia) {
+            LocalTime horaInicioExistente = cita.getHora();
+            LocalTime horaFinExistente = horaInicioExistente.plus(cita.getTratamiento().getDuracion());
+
+            boolean seCruza = (hora.isBefore(horaFinExistente) && horaFinPropuesta.isAfter(horaInicioExistente));
+
+            if (seCruza) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    public void reprogramarCita(Long id, CitaReprogramarRequest request) {
+        Cita cita = citaRepository.findById(id).orElseThrow();
+        cita.setHora(request.getHora());
+        cita.setFecha(request.getFecha());
+        citaRepository.save(cita);
+    }
+}
