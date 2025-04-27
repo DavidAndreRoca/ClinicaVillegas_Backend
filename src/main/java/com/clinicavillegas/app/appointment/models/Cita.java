@@ -1,17 +1,13 @@
 package com.clinicavillegas.app.appointment.models;
 
-import java.math.BigDecimal;
-
 import com.clinicavillegas.app.audit.AudityEntity;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
+import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

@@ -11,7 +11,6 @@ import java.util.List;
 
 public interface CitaService {
 
-
     List<CitaResponse> obtenerCitas(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
                                            LocalDate fechaFin, Long tratamientoId, String sexo);
 

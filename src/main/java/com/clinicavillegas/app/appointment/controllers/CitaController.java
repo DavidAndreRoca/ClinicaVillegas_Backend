@@ -6,7 +6,7 @@ import com.clinicavillegas.app.appointment.dto.request.ValidacionCitaRequest;
 import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
 import com.clinicavillegas.app.appointment.services.CitaService;
 import com.clinicavillegas.app.common.EndpointPaths;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,8 +18,10 @@ import java.util.Map;
 @RequestMapping(EndpointPaths.CITA_BASE)
 public class CitaController {
 
-    @Autowired
-    private CitaService citaService;
+    private final CitaService citaService;
+    public CitaController(CitaService citaService) {
+        this.citaService = citaService;
+    }
 
     @GetMapping
     public ResponseEntity<List<CitaResponse>> obtenerCitas(
@@ -34,7 +36,7 @@ public class CitaController {
         return ResponseEntity.ok(citaService.obtenerCitas(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo));
     }
 
-    @PostMapping("/validación")
+    @PostMapping("/validar")
     public ResponseEntity<Boolean> validarCita(@RequestBody ValidacionCitaRequest request){
         boolean validacion = citaService.validarDisponibilidad(request);
         return ResponseEntity.ok(validacion);
@@ -45,7 +47,8 @@ public class CitaController {
         citaService.atenderCita(id);
         return ResponseEntity.ok(Map.of("mensaje", "Cita atendida con exito"));
     }
-    @PutMapping("/reprogramación/{id}")
+  
+    @PutMapping("/reprogramar/{id}")
     public ResponseEntity<Map<String, Object>> reprogramarCita(@PathVariable("id") Long id, @RequestBody CitaReprogramarRequest request){
         citaService.reprogramarCita(id, request);
         return ResponseEntity.ok(Map.of("mensaje", "Cita reprogramada con exito"));
