@@ -21,12 +21,12 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/iniciodesesion")
+    @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    @PostMapping("/registrar")
+    @PostMapping("/register")
     public ResponseEntity<JwtResponse> register(@RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }

@@ -24,7 +24,7 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${app.secret.jwt}")
+    @Value("${app.jwt.secret}")
     public String SECRET_KEY;
 
     private final DentistaRepository dentistaRepository;
@@ -38,7 +38,7 @@ public class JwtService {
     }
 
     public String getToken(Map<String, Object> extraClaims, UserDetails user) {
-        extraClaims.put("roles", user.getAuthorities().stream().findFirst().orElseThrow().getAuthority());
+        extraClaims.put("role", user.getAuthorities().stream().findFirst().orElseThrow().getAuthority());
         if (user instanceof Usuario usuario) {
             extraClaims.put("id", usuario.getId());
             if (usuario.getRol().equals(Rol.DENTISTA)) {
