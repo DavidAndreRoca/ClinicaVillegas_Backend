@@ -1,6 +1,7 @@
 package com.clinicavillegas.app.appointment.models;
 
 import com.clinicavillegas.app.audit.AudityEntity;
+
 import jakarta.persistence.*;
 import lombok.*;
 

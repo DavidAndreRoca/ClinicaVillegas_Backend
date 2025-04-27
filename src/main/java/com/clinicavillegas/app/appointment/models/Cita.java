@@ -5,9 +5,10 @@ import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
 import jakarta.persistence.*;
-import lombok.*;
 
+import lombok.*;
 import java.math.BigDecimal;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 

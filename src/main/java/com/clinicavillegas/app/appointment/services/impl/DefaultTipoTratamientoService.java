@@ -43,4 +43,3 @@ public class DefaultTipoTratamientoService implements TipoTratamientoService {
         tipoTratamientoRepository.save(tipoTratamiento);
     }
 }
-

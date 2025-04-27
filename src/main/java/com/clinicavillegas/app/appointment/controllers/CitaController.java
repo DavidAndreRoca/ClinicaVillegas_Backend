@@ -6,6 +6,7 @@ import com.clinicavillegas.app.appointment.dto.request.ValidacionCitaRequest;
 import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
 import com.clinicavillegas.app.appointment.services.CitaService;
 import com.clinicavillegas.app.common.EndpointPaths;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +47,7 @@ public class CitaController {
         citaService.atenderCita(id);
         return ResponseEntity.ok(Map.of("mensaje", "Cita atendida con exito"));
     }
+  
     @PutMapping("/reprogramar/{id}")
     public ResponseEntity<Map<String, Object>> reprogramarCita(@PathVariable("id") Long id, @RequestBody CitaReprogramarRequest request){
         citaService.reprogramarCita(id, request);

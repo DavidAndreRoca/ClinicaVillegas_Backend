@@ -11,4 +11,3 @@ import java.util.List;
 public interface TipoTratamientoRepository extends JpaRepository<TipoTratamiento, Long>, JpaSpecificationExecutor<TipoTratamiento> {
     List<TipoTratamiento> findByEstado(boolean estado);
 }
-
