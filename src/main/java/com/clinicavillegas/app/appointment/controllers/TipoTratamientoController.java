@@ -4,6 +4,7 @@ import com.clinicavillegas.app.appointment.dto.request.TipoTratamientoRequest;
 import com.clinicavillegas.app.appointment.models.TipoTratamiento;
 import com.clinicavillegas.app.appointment.services.TipoTratamientoService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,7 @@ public class TipoTratamientoController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarTipoTratamiento(@RequestBody TipoTratamientoRequest request) {
+    public ResponseEntity<Map<String, Object>> agregarTipoTratamiento(@Valid @RequestBody TipoTratamientoRequest request) {
         tipoTratamientoService.agregarTipoTratamiento(request);
         Map<String, Object> response = new HashMap<>();
         response.put("mensaje", "Tipo de tratamiento agregado con exito");
@@ -34,7 +35,7 @@ public class TipoTratamientoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarTipoTratamiento(@PathVariable("id") Long id, @RequestBody TipoTratamientoRequest request) {
+    public ResponseEntity<Map<String, Object>> actualizarTipoTratamiento(@PathVariable("id") Long id, @Valid @RequestBody TipoTratamientoRequest request) {
         tipoTratamientoService.actualizarTipoTratamiento(id, request);
         Map<String, Object> response = new HashMap<>();
         response.put("mensaje", "Tipo de tratamiento actualizado con exito");

@@ -4,6 +4,7 @@ import com.clinicavillegas.app.common.EndpointPaths;
 import com.clinicavillegas.app.user.dto.request.UsuarioRequest;
 import com.clinicavillegas.app.user.dto.response.UsuarioResponse;
 import com.clinicavillegas.app.user.services.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,7 +34,7 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarCliente(@PathVariable Long id, UsuarioRequest request){
+    public ResponseEntity<Map<String, Object>> actualizarCliente(@PathVariable Long id, @Valid UsuarioRequest request){
         usuarioService.actualizarClientePorId(id, request);
         return ResponseEntity.ok(Map.of("mensaje", "Cliente actualizado con exito"));
     }

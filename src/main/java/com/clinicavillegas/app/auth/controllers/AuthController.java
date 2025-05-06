@@ -5,6 +5,7 @@ import com.clinicavillegas.app.auth.dto.request.RegisterRequest;
 import com.clinicavillegas.app.auth.dto.response.JwtResponse;
 import com.clinicavillegas.app.auth.services.AuthService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +23,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<JwtResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 

@@ -4,6 +4,7 @@ import com.clinicavillegas.app.common.EndpointPaths;
 import com.clinicavillegas.app.user.dto.request.TipoDocumentoRequest;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.services.TipoDocumentoService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,7 +44,7 @@ public class TipoDocumentoController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarTipoDocumento(@RequestBody TipoDocumentoRequest tipoDocumentoRequest){
+    public ResponseEntity<Map<String, Object>> agregarTipoDocumento(@Valid @RequestBody TipoDocumentoRequest tipoDocumentoRequest){
         tipoDocumentoService.agregarTipoDocumento(tipoDocumentoRequest);
         Map<String, Object> response = new HashMap<>();
         response.put("mensaje", "Tipo de documento agregado con exito");
@@ -52,7 +53,7 @@ public class TipoDocumentoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarTipoDocumento(@PathVariable("id") Long id, @RequestBody TipoDocumentoRequest tipoDocumentoRequest){
+    public ResponseEntity<Map<String, Object>> actualizarTipoDocumento(@PathVariable("id") Long id, @Valid @RequestBody TipoDocumentoRequest tipoDocumentoRequest){
         tipoDocumentoService.actualizarTipoDocumento(id, tipoDocumentoRequest);
         Map<String, Object> response = new HashMap<>();
         response.put("mensaje", "Tipo de documento actualizado con exito");

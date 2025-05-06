@@ -4,6 +4,7 @@ import com.clinicavillegas.app.chat.dto.ComentarioRequest;
 import com.clinicavillegas.app.chat.dto.ComentarioResponse;
 import com.clinicavillegas.app.chat.services.ComentarioService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,7 @@ public class ComentarioController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarComentario(@RequestBody ComentarioRequest request){
+    public ResponseEntity<Map<String, Object>> agregarComentario(@Valid @RequestBody ComentarioRequest request){
         comentarioService.agregarComentario(request);
         return ResponseEntity.ok(Map.of("mensaje", "Comentario agregado con exito"));
     }

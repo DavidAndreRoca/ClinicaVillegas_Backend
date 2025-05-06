@@ -4,6 +4,7 @@ import com.clinicavillegas.app.appointment.dto.request.TratamientoRequest;
 import com.clinicavillegas.app.appointment.models.Tratamiento;
 import com.clinicavillegas.app.appointment.services.TratamientoService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,13 +29,13 @@ public class TratamientoController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> guardarTratamiento(@RequestBody TratamientoRequest request) {
+    public ResponseEntity<Map<String, Object>> guardarTratamiento(@Valid @RequestBody TratamientoRequest request) {
         tratamientoService.guardarTratamiento(request);
         return ResponseEntity.ok(Map.of("mensaje", "Tratamiento guardado con exito"));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarTratamiento(@PathVariable Long id, @RequestBody TratamientoRequest request) {
+    public ResponseEntity<Map<String, Object>> actualizarTratamiento(@PathVariable Long id, @Valid @RequestBody TratamientoRequest request) {
         tratamientoService.actualizarTratamiento(id, request);
         return ResponseEntity.ok(Map.of("mensaje", "Tratamiento actualizado con exito"));
     }
