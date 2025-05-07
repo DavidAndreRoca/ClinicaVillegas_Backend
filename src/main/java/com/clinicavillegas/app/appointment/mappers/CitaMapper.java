@@ -1,10 +1,18 @@
 package com.clinicavillegas.app.appointment.mappers;
 
+import com.clinicavillegas.app.appointment.dto.request.CitaRequest;
 import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.models.Cita;
+import com.clinicavillegas.app.appointment.models.Dentista;
+import com.clinicavillegas.app.appointment.models.Tratamiento;
+import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
+import com.clinicavillegas.app.user.models.Sexo;
+import com.clinicavillegas.app.user.models.TipoDocumento;
+import com.clinicavillegas.app.user.models.Usuario;
 
 public class CitaMapper {
+
     public static CitaResponse toDto(Cita cita){
         return CitaResponse.builder()
                 .id(cita.getId())

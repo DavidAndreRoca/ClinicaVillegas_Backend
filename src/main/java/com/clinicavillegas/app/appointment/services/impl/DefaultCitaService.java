@@ -13,7 +13,9 @@ import com.clinicavillegas.app.appointment.repositories.DentistaRepository;
 import com.clinicavillegas.app.appointment.repositories.TratamientoRepository;
 import com.clinicavillegas.app.appointment.services.CitaService;
 import com.clinicavillegas.app.appointment.specifications.CitaSpecification;
+import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import com.clinicavillegas.app.user.models.Sexo;
+import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
 import com.clinicavillegas.app.user.repositories.TipoDocumentoRepository;
 import com.clinicavillegas.app.user.repositories.UsuarioRepository;
@@ -65,16 +67,32 @@ public class DefaultCitaService implements CitaService {
     }
 
     public List<Cita> obtenerCitasPorUsuario(Long usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow();
+        Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(
+                () -> new ResourceNotFoundException(Usuario.class, usuarioId)
+        );
         return citaRepository.findByUsuario(usuario);
     }
 
     public List<Cita> obtenerCitasPorDentista(Long dentistaId) {
-        Dentista dentista = dentistaRepository.findById(dentistaId).orElseThrow();
+        Dentista dentista = dentistaRepository.findById(dentistaId).orElseThrow(
+                () -> new ResourceNotFoundException(Dentista.class, dentistaId)
+        );
         return citaRepository.findByDentista(dentista);
     }
 
     public void agregarCita(CitaRequest citaRequest) {
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(citaRequest.getTipoDocumento()).orElseThrow(
+                () -> new ResourceNotFoundException(TipoDocumento.class, "Acrónimo", citaRequest.getTipoDocumento())
+        );
+        Dentista dentista = dentistaRepository.findById(citaRequest.getDentistaId()).orElseThrow(
+                () -> new ResourceNotFoundException(Dentista.class, citaRequest.getDentistaId())
+        );
+        Usuario usuario = usuarioRepository.findById(citaRequest.getUsuarioId()).orElseThrow(
+                () -> new ResourceNotFoundException(Usuario.class, citaRequest.getUsuarioId())
+        );
+        Tratamiento tratamiento = tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow(
+                () -> new ResourceNotFoundException(Tratamiento.class, citaRequest.getTratamientoId())
+        );
         Cita cita = Cita.builder()
                 .fecha(citaRequest.getFecha())
                 .hora(citaRequest.getHora())
@@ -83,44 +101,61 @@ public class DefaultCitaService implements CitaService {
                 .apellidoPaterno(citaRequest.getApellidoPaterno())
                 .apellidoMaterno(citaRequest.getApellidoMaterno())
                 .estado("Pendiente")
-                .tipoDocumento(tipoDocumentoRepository.findByAcronimo(citaRequest.getTipoDocumento()).orElseThrow())
+                .tipoDocumento(tipoDocumento)
                 .numeroIdentidad(citaRequest.getNumeroIdentidad())
                 .sexo(Sexo.valueOf(citaRequest.getSexo()))
                 .fechaNacimiento(citaRequest.getFechaNacimiento())
-                .dentista(dentistaRepository.findById(citaRequest.getDentistaId()).orElseThrow())
-                .usuario(usuarioRepository.findById(citaRequest.getUsuarioId()).orElseThrow())
-                .tratamiento(tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow())
+                .dentista(dentista)
+                .usuario(usuario)
+                .tratamiento(tratamiento)
                 .build();
         citaRepository.save(cita);
     }
 
     public void actualizarCita(Long id, CitaRequest citaRequest) {
-        Cita cita = citaRepository.findById(id).orElseThrow();
+        Cita cita = citaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Cita.class, id)
+        );
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findByNombre(citaRequest.getTipoDocumento()).orElseThrow(
+                () -> new ResourceNotFoundException(Tratamiento.class, "nombre", citaRequest.getTipoDocumento())
+        );
+        Dentista dentista = dentistaRepository.findById(citaRequest.getDentistaId()).orElseThrow(
+                () -> new ResourceNotFoundException(Dentista.class, citaRequest.getDentistaId())
+        );
+        Usuario usuario = usuarioRepository.findById(citaRequest.getUsuarioId()).orElseThrow(
+                () -> new ResourceNotFoundException(Usuario.class, citaRequest.getUsuarioId())
+        );
+        Tratamiento tratamiento = tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow(
+                () -> new ResourceNotFoundException(Tratamiento.class, citaRequest.getTratamientoId())
+        );
         cita.setMonto(citaRequest.getMonto());
         cita.setHora(citaRequest.getHora());
         cita.setFecha(citaRequest.getFecha());
         cita.setNombres(citaRequest.getNombres());
         cita.setApellidoPaterno(citaRequest.getApellidoPaterno());
         cita.setApellidoMaterno(citaRequest.getApellidoMaterno());
-        cita.setTipoDocumento(tipoDocumentoRepository.findByNombre(citaRequest.getTipoDocumento()).orElseThrow());
+        cita.setTipoDocumento(tipoDocumento);
         cita.setNumeroIdentidad(citaRequest.getNumeroIdentidad());
         cita.setSexo(Sexo.valueOf(citaRequest.getSexo()));
         cita.setFechaNacimiento(citaRequest.getFechaNacimiento());
-        cita.setDentista(dentistaRepository.findById(citaRequest.getDentistaId()).orElseThrow());
-        cita.setUsuario(usuarioRepository.findById(citaRequest.getUsuarioId()).orElseThrow());
-        cita.setTratamiento(tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow());
+        cita.setDentista(dentista);
+        cita.setUsuario(usuario);
+        cita.setTratamiento(tratamiento);
         citaRepository.save(cita);
     }
 
     public void atenderCita(Long id) {
-        citaRepository.findById(id).ifPresent(cita -> {
-            cita.setEstado("Atendida");
-            citaRepository.save(cita);
-        });
+        Cita cita = citaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Cita.class, id)
+        );
+        cita.setEstado("Atendida");
+        citaRepository.save(cita);
     }
 
     public void eliminarCita(Long id) {
-        Cita cita = citaRepository.findById(id).orElseThrow();
+        Cita cita = citaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Cita.class, id)
+        );
         cita.setEstado("Cancelada");
         citaRepository.save(cita);
     }
@@ -134,7 +169,9 @@ public class DefaultCitaService implements CitaService {
                         .and(CitaSpecification.conEstado("Pendiente"))
                         .and(CitaSpecification.conDentistaId(request.getDentistaId())));
 
-        Tratamiento tratamiento = tratamientoRepository.findById(request.getTratamientoId()).orElseThrow();
+        Tratamiento tratamiento = tratamientoRepository.findById(request.getTratamientoId()).orElseThrow(
+                () -> new ResourceNotFoundException(Tratamiento.class, request.getTratamientoId())
+        );
 
         Duration duracion = tratamiento.getDuracion();
         LocalTime horaFinPropuesta = hora.plus(duracion);
@@ -153,7 +190,9 @@ public class DefaultCitaService implements CitaService {
         return true;
     }
     public void reprogramarCita(Long id, CitaReprogramarRequest request) {
-        Cita cita = citaRepository.findById(id).orElseThrow();
+        Cita cita = citaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Cita.class, id)
+        );
         cita.setHora(request.getHora());
         cita.setFecha(request.getFecha());
         citaRepository.save(cita);

@@ -9,6 +9,7 @@ import com.clinicavillegas.app.appointment.repositories.DentistaRepository;
 import com.clinicavillegas.app.appointment.repositories.HorarioRepository;
 import com.clinicavillegas.app.appointment.services.DentistaService;
 import com.clinicavillegas.app.appointment.specifications.DentistaSpecification;
+import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Usuario;
 import com.clinicavillegas.app.user.repositories.UsuarioRepository;
@@ -36,36 +37,50 @@ public class DefaultDentistaService implements DentistaService {
     }
 
     public Dentista obtenerDentista(Long id) {
-        return dentistaRepository.findById(id).orElse(null);
+        return dentistaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Dentista.class, id)
+        );
     }
     public List<DentistaResponse> obtenerDentistas(String nombre, String especializacion, Long usuarioId) {
+
         Specification<Dentista> specs = DentistaSpecification.conNombre(nombre)
                 .and(DentistaSpecification.conEspecializacion(especializacion))
                 .and(DentistaSpecification.conEstado(true));
+
         List<Dentista> dentistas = dentistaRepository.findAll(specs);
+
         return dentistas.stream()
                 .map(DentistaMapper::toDto)
                 .toList();
     }
     public void agregarDentista(DentistaRequest request) {
-        Usuario usuario = usuarioRepository.findById(request.getUsuarioId()).orElseThrow();
+
+        Usuario usuario = usuarioRepository.findById(request.getUsuarioId()).orElseThrow(
+                () -> new ResourceNotFoundException(Usuario.class, request.getUsuarioId())
+        );
+
         usuario.setRol(Rol.DENTISTA);
         usuarioRepository.save(usuario);
+
         Dentista dentista = Dentista.builder()
                 .nColegiatura(request.getNColegiatura())
                 .especializacion(request.getEspecializacion())
                 .estado(true)
-                .usuario(usuarioRepository.findById(request.getUsuarioId()).orElseThrow())
+                .usuario(usuario)
                 .build();
         dentistaRepository.save(dentista);
     }
 
     public void actualizarDentista(Long id, DentistaRequest request) {
-        Dentista dentista = dentistaRepository.findById(id).orElseThrow();
+        Dentista dentista = dentistaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Dentista.class, id)
+        );
         Usuario usuarioAnterior = dentista.getUsuario();
         usuarioAnterior.setRol(Rol.PACIENTE);
         usuarioRepository.save(usuarioAnterior);
-        Usuario usuarioActual = usuarioRepository.findById(request.getUsuarioId()).orElseThrow();
+        Usuario usuarioActual = usuarioRepository.findById(request.getUsuarioId()).orElseThrow(
+                () -> new ResourceNotFoundException(Usuario.class, request.getUsuarioId())
+        );
         dentista.setUsuario(usuarioActual);
         dentista.setNColegiatura(request.getNColegiatura());
         dentista.setEspecializacion(request.getEspecializacion());
@@ -73,7 +88,9 @@ public class DefaultDentistaService implements DentistaService {
     }
 
     public void eliminarDentista(Long id) {
-        Dentista dentista = dentistaRepository.findById(id).orElseThrow();
+        Dentista dentista = dentistaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Dentista.class, id)
+        );
         //obtener horarios del dentista
         List<Horario> horarios = horarioRepository.findByDentista(dentista);
         for (Horario horario : horarios) {
@@ -84,6 +101,7 @@ public class DefaultDentistaService implements DentistaService {
         usuarioRepository.save(usuario);
         dentistaRepository.delete(dentista);
     }
+
     public List<String> obtenerEspecialidades() {
         return dentistaRepository.findEspecializaciones();
     }
