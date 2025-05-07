@@ -4,6 +4,7 @@ import com.clinicavillegas.app.common.EndpointPaths;
 import com.clinicavillegas.app.email.dto.CodeRequest;
 import com.clinicavillegas.app.email.dto.EmailRequest;
 import com.clinicavillegas.app.email.services.EmailService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,12 +24,12 @@ public class EmailController {
     }
 
     @PostMapping("/sendemail")
-    public String sendEmail(@RequestBody EmailRequest request){
+    public String sendEmail(@Valid @RequestBody EmailRequest request){
         return emailService.enviarCorreo(request);
     }
 
     @PostMapping("/sendcode")
-    public ResponseEntity<Map<String, Object>> sendCode(@RequestBody CodeRequest request){
+    public ResponseEntity<Map<String, Object>> sendCode(@Valid @RequestBody CodeRequest request){
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("code", emailService.enviarCodigoVerificacion(request.getEmail()));
         return ResponseEntity.ok(response);

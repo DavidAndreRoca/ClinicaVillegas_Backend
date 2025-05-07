@@ -4,6 +4,7 @@ import com.clinicavillegas.app.appointment.dto.request.DentistaRequest;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.services.DentistaService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,13 +36,13 @@ public class DentistaController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarDentista(@RequestBody DentistaRequest request){
+    public ResponseEntity<Map<String, Object>> agregarDentista(@Valid @RequestBody DentistaRequest request){
         dentistaService.agregarDentista(request);
         return ResponseEntity.ok(Map.of("mensaje", "Dentista agregado con exito"));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarDentista(@PathVariable("id") Long id, @RequestBody DentistaRequest request){
+    public ResponseEntity<Map<String, Object>> actualizarDentista(@PathVariable("id") Long id, @Valid @RequestBody DentistaRequest request){
         dentistaService.actualizarDentista(id, request);
         return ResponseEntity.ok(Map.of("mensaje", "Dentista actualizado con exito"));
     }

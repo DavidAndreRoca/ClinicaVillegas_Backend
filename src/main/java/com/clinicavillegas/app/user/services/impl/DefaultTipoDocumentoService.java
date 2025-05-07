@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.user.services.impl;
 
+import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import com.clinicavillegas.app.user.dto.request.TipoDocumentoRequest;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.repositories.TipoDocumentoRepository;
@@ -38,19 +39,25 @@ public class DefaultTipoDocumentoService implements TipoDocumentoService {
     }
 
     public void actualizarTipoDocumento(Long id, TipoDocumentoRequest request) {
-        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(id).get();
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(TipoDocumento.class, id)
+        );
         tipoDocumento.setNombre(request.getNombre());
         tipoDocumento.setAcronimo(request.getAcronimo());
         tipoDocumentoRepository.save(tipoDocumento);
     }
 
     public void eliminarTipoDocumento(Long id) {
-        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(id).get();
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(TipoDocumento.class, id)
+        );
         tipoDocumento.setEstado(false);
         tipoDocumentoRepository.save(tipoDocumento);
     }
 
     public TipoDocumento obtenerTipoDocumento(Long id) {
-        return tipoDocumentoRepository.findById(id).get();
+        return tipoDocumentoRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(TipoDocumento.class, id)
+        );
     }
 }

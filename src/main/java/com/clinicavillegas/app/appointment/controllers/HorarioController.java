@@ -4,6 +4,7 @@ import com.clinicavillegas.app.appointment.dto.request.HorarioRequest;
 import com.clinicavillegas.app.appointment.dto.response.HorarioResponse;
 import com.clinicavillegas.app.appointment.services.HorarioService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +32,7 @@ public class HorarioController {
 
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarHorario(@RequestBody HorarioRequest request){
+    public ResponseEntity<Map<String, Object>> agregarHorario(@Valid @RequestBody HorarioRequest request){
         horarioService.agregarHorario(request);
         return ResponseEntity.ok(Map.of("mensaje", "Horario agregado con exito"));
     }

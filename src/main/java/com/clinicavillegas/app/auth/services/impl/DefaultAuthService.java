@@ -5,6 +5,7 @@ import com.clinicavillegas.app.auth.dto.request.RegisterRequest;
 import com.clinicavillegas.app.auth.dto.response.JwtResponse;
 import com.clinicavillegas.app.auth.services.AuthService;
 import com.clinicavillegas.app.auth.services.JwtService;
+import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
@@ -41,7 +42,9 @@ public class DefaultAuthService implements AuthService {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasena())
         );
-        UserDetails userDetails =  usuarioRepository.findByCorreo(request.getEmail()).orElseThrow();
+        UserDetails userDetails =  usuarioRepository.findByCorreo(request.getEmail()).orElseThrow(
+                () -> new ResourceNotFoundException(Usuario.class, "correo", request.getEmail())
+        );
         String token = jwtService.getToken(userDetails);
         return JwtResponse.builder()
                 .token(token)
@@ -49,7 +52,9 @@ public class DefaultAuthService implements AuthService {
     }
 
     public JwtResponse register(RegisterRequest request) {
-        TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(request.getTipoDocumento()).orElseThrow();
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(request.getTipoDocumento()).orElseThrow(
+                () -> new ResourceNotFoundException(TipoDocumento.class, "acrónimo", request.getTipoDocumento())
+        );
 
         Usuario usuario = Usuario.builder()
                 .correo(request.getCorreo())

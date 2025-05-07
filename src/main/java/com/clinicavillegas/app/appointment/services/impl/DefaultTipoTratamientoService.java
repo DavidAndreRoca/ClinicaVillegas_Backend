@@ -5,6 +5,7 @@ import com.clinicavillegas.app.appointment.models.TipoTratamiento;
 import com.clinicavillegas.app.appointment.repositories.TipoTratamientoRepository;
 import com.clinicavillegas.app.appointment.services.TipoTratamientoService;
 import com.clinicavillegas.app.appointment.specifications.TipoTratamientoSpecification;
+import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -32,13 +33,17 @@ public class DefaultTipoTratamientoService implements TipoTratamientoService {
     }
 
     public void actualizarTipoTratamiento(Long id, TipoTratamientoRequest request) {
-        TipoTratamiento tipoTratamiento = tipoTratamientoRepository.findById(id).orElseThrow();
+        TipoTratamiento tipoTratamiento = tipoTratamientoRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(TipoTratamiento.class, id)
+        );
         tipoTratamiento.setNombre(request.getNombre());
         tipoTratamientoRepository.save(tipoTratamiento);
     }
 
     public void eliminarTipoTratamiento(Long id) {
-        TipoTratamiento tipoTratamiento = tipoTratamientoRepository.findById(id).orElseThrow();
+        TipoTratamiento tipoTratamiento = tipoTratamientoRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(TipoTratamiento.class, id)
+        );
         tipoTratamiento.setEstado(false);
         tipoTratamientoRepository.save(tipoTratamiento);
     }

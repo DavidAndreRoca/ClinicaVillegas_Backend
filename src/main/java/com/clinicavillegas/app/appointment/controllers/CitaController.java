@@ -7,6 +7,7 @@ import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
 import com.clinicavillegas.app.appointment.services.CitaService;
 import com.clinicavillegas.app.common.EndpointPaths;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,7 +38,7 @@ public class CitaController {
     }
 
     @PostMapping("/validar")
-    public ResponseEntity<Boolean> validarCita(@RequestBody ValidacionCitaRequest request){
+    public ResponseEntity<Boolean> validarCita(@Valid @RequestBody ValidacionCitaRequest request){
         boolean validacion = citaService.validarDisponibilidad(request);
         return ResponseEntity.ok(validacion);
     }
@@ -49,19 +50,19 @@ public class CitaController {
     }
   
     @PutMapping("/reprogramar/{id}")
-    public ResponseEntity<Map<String, Object>> reprogramarCita(@PathVariable("id") Long id, @RequestBody CitaReprogramarRequest request){
+    public ResponseEntity<Map<String, Object>> reprogramarCita(@PathVariable("id") Long id, @Valid @RequestBody CitaReprogramarRequest request){
         citaService.reprogramarCita(id, request);
         return ResponseEntity.ok(Map.of("mensaje", "Cita reprogramada con exito"));
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarCita(@RequestBody CitaRequest citaRequest){
+    public ResponseEntity<Map<String, Object>> agregarCita(@Valid @RequestBody CitaRequest citaRequest){
         citaService.agregarCita(citaRequest);
         return ResponseEntity.ok(Map.of("mensaje", "Cita agregada con exito"));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarCita(@PathVariable("id") Long id, @RequestBody CitaRequest citaRequest){
+    public ResponseEntity<Map<String, Object>> actualizarCita(@PathVariable("id") Long id, @Valid @RequestBody CitaRequest citaRequest){
         citaService.actualizarCita(id, citaRequest);
         return ResponseEntity.ok(Map.of("mensaje", "Cita actualizada con exito"));
     }
