@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -34,14 +36,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String token = getTokenFromRequest(request);
         final String userEmail;
         if (token == null) {
+            log.debug("No token found in request");
             filterChain.doFilter(request, response);
             return;
         }
+        log.debug("Token received: {}", token);
         userEmail = jwtService.getEmailFromToken(token);
+        log.debug("Extracted user email from token: {}", userEmail);
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null){
             UserDetails userDetails=userDetailsService.loadUserByUsername(userEmail);
+            log.debug("Loaded user: {}", userDetails.getUsername());
 
             if (jwtService.isTokenValid(token, userDetails)){
+                log.debug("Token is valid");
                 UsernamePasswordAuthenticationToken authToken= new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
@@ -50,6 +57,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                log.debug("Authentication set for user: {}", userEmail);
+            }else {
+                log.warn("Invalid token for user: {}", userEmail);
             }
 
         }
