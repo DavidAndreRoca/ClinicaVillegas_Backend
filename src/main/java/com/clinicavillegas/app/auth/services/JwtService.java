@@ -25,7 +25,7 @@ import java.util.function.Function;
 public class JwtService {
 
     @Value("${app.jwt.secret}")
-    public String SECRET_KEY;
+    private String SECRET_KEY;
 
     private final DentistaRepository dentistaRepository;
 
