@@ -51,7 +51,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.TIPO_DOCUMENTO_BASE)).hasRole("ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.TIPO_DOCUMENTO_BASE)).hasRole("ADMINISTRADOR")
 
-                                .requestMatchers(HttpMethod.GET, deepMatcher(EndpointPaths.DENTISTA_BASE)).permitAll()
+                                .requestMatchers(HttpMethod.GET, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).permitAll()
                                 .requestMatchers(HttpMethod.POST, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).hasRole("ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).hasRole("ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).hasRole("ADMINISTRADOR")
@@ -61,7 +61,10 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasRole("ADMINISTRADOR")
 
-                                .requestMatchers(deepMatcher(EndpointPaths.HORARIO_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")
+                                .requestMatchers(HttpMethod.GET, deepMatcher(EndpointPaths.HORARIO_BASE)).authenticated()
+                                .requestMatchers(HttpMethod.POST, deepMatcher(EndpointPaths.HORARIO_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")
+                                .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.HORARIO_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")
+                                .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.HORARIO_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")
 
                                 .requestMatchers(deepMatcher(EndpointPaths.CITA_BASE)).hasAnyRole("PACIENTE", "DENTISTA", "ADMINISTRADOR")
 

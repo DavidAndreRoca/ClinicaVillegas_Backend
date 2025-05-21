@@ -38,7 +38,7 @@ public class JwtService {
     }
 
     public String getToken(Map<String, Object> extraClaims, UserDetails user) {
-        extraClaims.put("role", user.getAuthorities().stream().findFirst().orElseThrow().getAuthority());
+        extraClaims.put("role", user.getAuthorities().stream().findFirst().orElseThrow().getAuthority().substring(5));
         if (user instanceof Usuario usuario) {
             extraClaims.put("id", usuario.getId());
             if (usuario.getRol().equals(Rol.DENTISTA)) {
