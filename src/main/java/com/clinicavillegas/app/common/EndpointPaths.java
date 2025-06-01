@@ -23,4 +23,6 @@ public class EndpointPaths {
     public static final String EMAIL_BASE = "/api/email";
 
     public static final String CHAT_BASE = "/api/comentarios";
+
+    public static final String REPORTE_BASE = "/api/reportes";
 }

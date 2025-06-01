@@ -79,7 +79,8 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.CHAT_BASE)).hasAnyRole("PACIENTE", "DENTISTA")
                                 .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.CHAT_BASE)).hasAnyRole("PACIENTE", "DENTISTA")
 
-                                .anyRequest().authenticated()
+                                .requestMatchers(deepMatcher(EndpointPaths.REPORTE_BASE)).permitAll()
+                                .anyRequest().denyAll()
                 )
                 .sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
