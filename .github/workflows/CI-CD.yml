@@ -1,0 +1,55 @@
+name: CI/CD Pipeline for Spring Boot
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+env:
+  DB_HOST: localhost
+  DB_PORT: 5432
+  FRONT_END_URL: http://localhost:4200
+  RENIEC_URL: https://api.apis.net.pe/v2/reniec/
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v3
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Build and test with Maven
+      run: mvn -B verify
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ secrets.POSTGRES_DB }}
+        SPRING_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}
+        SPRING_DATASOURCE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        SPRING_JPA_HIBERNATE_DDL_AUTO: update
+        
+        MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+        MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+        
+        JWT_SECRET: ${{ secrets.JWT_SECRET_KEY }}
