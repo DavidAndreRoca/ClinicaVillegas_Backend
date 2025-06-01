@@ -1,6 +1,6 @@
 package com.clinicavillegas.app.chat.mappers;
 
-import com.clinicavillegas.app.chat.dto.ComentarioResponse;
+import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.models.Comentario;
 
 public class ComentarioMapper {

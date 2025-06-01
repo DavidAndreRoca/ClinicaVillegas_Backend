@@ -1,7 +1,7 @@
 package com.clinicavillegas.app.chat.controllers;
 
-import com.clinicavillegas.app.chat.dto.ComentarioRequest;
-import com.clinicavillegas.app.chat.dto.ComentarioResponse;
+import com.clinicavillegas.app.chat.dto.request.ComentarioRequest;
+import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.services.ComentarioService;
 import com.clinicavillegas.app.common.EndpointPaths;
 import jakarta.validation.Valid;

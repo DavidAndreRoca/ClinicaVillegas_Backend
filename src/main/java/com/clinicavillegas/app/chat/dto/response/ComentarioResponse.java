@@ -1,4 +1,4 @@
-package com.clinicavillegas.app.chat.dto;
+package com.clinicavillegas.app.chat.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
