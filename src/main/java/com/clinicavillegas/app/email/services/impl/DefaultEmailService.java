@@ -1,8 +1,9 @@
-package com.clinicavillegas.app.email.services;
+package com.clinicavillegas.app.email.services.impl;
 
 import com.clinicavillegas.app.appointment.models.Cita;
 import com.clinicavillegas.app.email.MailTemplates;
 import com.clinicavillegas.app.email.dto.EmailRequest;
+import com.clinicavillegas.app.email.services.EmailService;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -117,9 +118,10 @@ public class DefaultEmailService implements EmailService {
 
             helperDentista.setText(htmlContentDentista, true);
             javaMailSender.send(mimeMessageDentista);
-        } catch (MessagingException e) {
+        } catch (Exception  e) {
             log.error("Error al enviar el correo de recordatorio al dentista: {}", e.getMessage());
         }
+
     }
 
 }

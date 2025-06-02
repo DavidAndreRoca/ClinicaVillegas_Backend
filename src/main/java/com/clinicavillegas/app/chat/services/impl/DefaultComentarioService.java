@@ -1,10 +1,11 @@
-package com.clinicavillegas.app.chat.services;
+package com.clinicavillegas.app.chat.services.impl;
 
 import com.clinicavillegas.app.chat.dto.request.ComentarioRequest;
 import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.mappers.ComentarioMapper;
 import com.clinicavillegas.app.chat.models.Comentario;
 import com.clinicavillegas.app.chat.repositories.ComentarioRepository;
+import com.clinicavillegas.app.chat.services.ComentarioService;
 import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import com.clinicavillegas.app.user.models.Usuario;
 import com.clinicavillegas.app.user.repositories.UsuarioRepository;
