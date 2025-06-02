@@ -15,9 +15,11 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
 @Import(JpaTestConfig.class)
+@ActiveProfiles("test")
 public class TipoTratamientoRepositoryTest {
 
     @Autowired
