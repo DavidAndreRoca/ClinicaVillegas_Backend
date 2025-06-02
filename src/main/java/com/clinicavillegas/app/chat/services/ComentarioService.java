@@ -1,7 +1,7 @@
 package com.clinicavillegas.app.chat.services;
 
-import com.clinicavillegas.app.chat.dto.ComentarioRequest;
-import com.clinicavillegas.app.chat.dto.ComentarioResponse;
+import com.clinicavillegas.app.chat.dto.request.ComentarioRequest;
+import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 
 import java.util.List;
 
