@@ -1,4 +1,4 @@
-package com.clinicavillegas.app.chat.dto;
+package com.clinicavillegas.app.chat.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
