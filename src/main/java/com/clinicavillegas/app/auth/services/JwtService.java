@@ -27,6 +27,9 @@ public class JwtService {
     @Value("${app.jwt.secret}")
     private String SECRET_KEY;
 
+    @Value("${app.jwt.expiration-time}")
+    private long EXPIRATION_TIME;
+
     private final DentistaRepository dentistaRepository;
 
     public JwtService(DentistaRepository dentistaRepository) {
@@ -45,14 +48,12 @@ public class JwtService {
                 Specification<Dentista> specs = DentistaSpecification.conUsuarioId(usuario.getId());
                 extraClaims.put("dentistaId", dentistaRepository.findAll(specs).getFirst().getId());
             }
-            extraClaims.put("nombres", usuario.getApellidoPaterno() + " " + usuario.getApellidoMaterno() + ", " + usuario.getNombres());
-            extraClaims.put("imagenPerfil", usuario.getImagenPerfil());
         }
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(user.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis()+ 1000 * 60 * 60 * 4))
+                .setExpiration(new Date(System.currentTimeMillis()+ EXPIRATION_TIME * 1000))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -86,6 +87,10 @@ public class JwtService {
 
     private Date getExpiration(String token){
         return getClaim(token, Claims::getExpiration);
+    }
+
+    public long getDefaultExpirationTime(){
+        return EXPIRATION_TIME;
     }
 
     private boolean isTokenExpired(String token){

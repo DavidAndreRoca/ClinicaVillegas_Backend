@@ -2,9 +2,12 @@ package com.clinicavillegas.app.auth.services;
 
 import com.clinicavillegas.app.auth.dto.request.LoginRequest;
 import com.clinicavillegas.app.auth.dto.request.RegisterRequest;
-import com.clinicavillegas.app.auth.dto.response.JwtResponse;
+import com.clinicavillegas.app.auth.dto.response.AuthResponse;
+import com.clinicavillegas.app.user.dto.response.UsuarioResponse;
+import org.springframework.security.core.userdetails.UserDetails;
 
 public interface AuthService {
-    JwtResponse login(LoginRequest request);
-    JwtResponse register(RegisterRequest request);
+    AuthResponse login(LoginRequest request);
+    AuthResponse register(RegisterRequest request);
+    UsuarioResponse me(UserDetails userDetails);
 }

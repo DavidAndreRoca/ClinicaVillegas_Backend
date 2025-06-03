@@ -24,9 +24,8 @@ public class ApiReniecService {
     @Value("${app.reniec.token}")
     private String RENIEC_TOKEN;
 
-    @Autowired
-    public ApiReniecService(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplate = restTemplateBuilder.build();
+    public ApiReniecService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
     public Map<String, Object> consultarDni(String dni) {
