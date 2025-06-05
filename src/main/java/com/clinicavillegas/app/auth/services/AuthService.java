@@ -4,11 +4,12 @@ import com.clinicavillegas.app.auth.dto.request.LoginRequest;
 import com.clinicavillegas.app.auth.dto.request.RegisterRequest;
 import com.clinicavillegas.app.auth.dto.response.AuthResponse;
 import com.clinicavillegas.app.user.dto.response.UsuarioResponse;
-import org.springframework.security.core.userdetails.UserDetails;
+import com.clinicavillegas.app.user.models.Usuario;
 
 public interface AuthService {
-    AuthResponse login(LoginRequest request, String ip, String userAgent);
-    AuthResponse register(RegisterRequest request,  String ip, String userAgent);
-    UsuarioResponse me(UserDetails userDetails);
-    String refreshToken(String refreshToken);
+    AuthResponse authenticateAndGenerateTokens(LoginRequest request, String ip, String userAgent);
+    AuthResponse registerAndGenerateTokens(RegisterRequest request, String ip, String userAgent);
+    UsuarioResponse getUserProfile(Usuario usuario);
+    String refreshAccessToken(String refreshToken);
+    void invalidateUserSessions(Usuario usuario);
 }

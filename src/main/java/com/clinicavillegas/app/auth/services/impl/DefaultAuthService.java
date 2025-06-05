@@ -21,10 +21,10 @@ import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
 import com.clinicavillegas.app.user.repositories.TipoDocumentoRepository;
 import com.clinicavillegas.app.user.repositories.UsuarioRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -34,20 +34,16 @@ import java.time.temporal.ChronoUnit;
 @Service
 public class DefaultAuthService implements AuthService {
     private final JwtService jwtService;
-
     private final UsuarioRepository usuarioRepository;
-
     private final PasswordEncoder passwordEncoder;
-
     private final AuthenticationManager authenticationManager;
-
     private final TipoDocumentoRepository tipoDocumentoRepository;
-
     private final DentistaRepository dentistaRepository;
-
     private final SessionRepository sessionRepository;
 
-    public DefaultAuthService(JwtService jwtService, UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, TipoDocumentoRepository tipoDocumentoRepository, DentistaRepository dentistaRepository, SessionRepository sessionRepository) {
+    public DefaultAuthService(JwtService jwtService, UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
+                              AuthenticationManager authenticationManager, TipoDocumentoRepository tipoDocumentoRepository,
+                              DentistaRepository dentistaRepository, SessionRepository sessionRepository) {
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
@@ -57,31 +53,28 @@ public class DefaultAuthService implements AuthService {
         this.sessionRepository = sessionRepository;
     }
 
-    public AuthResponse login(LoginRequest request, String ip, String userAgent) {
+    @Override
+    @Transactional
+    public AuthResponse authenticateAndGenerateTokens(LoginRequest request, String ip, String userAgent) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasena())
         );
-        Usuario usuario =  usuarioRepository.findByCorreo(request.getEmail()).orElseThrow(
-                () -> new ResourceNotFoundException(Usuario.class, "correo", request.getEmail())
-        );
-        UsuarioResponse usuarioResponse = UsuarioMapper.toDto(usuario);
-        buildResponseByDentistRole(usuario, usuarioResponse);
-        String accessToken = jwtService.getToken(usuario);
-        String refreshToken = jwtService.generateRefreshToken(usuario);
-        saveSession(refreshToken, ip, userAgent, usuario);
-        return AuthResponse.builder()
-                .token(accessToken)
-                .refreshToken(refreshToken)
-                .expirationTime(jwtService.getEXPIRATION_TIME())
-                .expirationTimeRefresh(jwtService.getEXPIRATION_TIME_REFRESH())
-                .usuarioResponse(usuarioResponse)
-                .build();
+
+        Usuario usuario = usuarioRepository.findByCorreo(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException(Usuario.class, "correo", request.getEmail()));
+
+        return generateAuthResponse(usuario, ip, userAgent);
     }
 
-    public AuthResponse register(RegisterRequest request, String ip, String userAgent) {
-        TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(request.getTipoDocumento()).orElseThrow(
-                () -> new ResourceNotFoundException(TipoDocumento.class, "acrónimo", request.getTipoDocumento())
-        );
+    @Override
+    @Transactional
+    public AuthResponse registerAndGenerateTokens(RegisterRequest request, String ip, String userAgent) {
+        if (usuarioRepository.findByCorreo(request.getCorreo()).isPresent()) {
+            throw new IllegalArgumentException("Ya existe un usuario con el correo electrónico proporcionado.");
+        }
+
+        TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(request.getTipoDocumento())
+                .orElseThrow(() -> new ResourceNotFoundException(TipoDocumento.class, "acrónimo", request.getTipoDocumento()));
 
         Usuario usuario = Usuario.builder()
                 .correo(request.getCorreo())
@@ -100,28 +93,19 @@ public class DefaultAuthService implements AuthService {
                 .build();
 
         usuarioRepository.save(usuario);
-        String accessToken = jwtService.getToken(usuario);
-        String refreshToken = jwtService.generateRefreshToken(usuario);
-        saveSession(refreshToken, ip, userAgent, usuario);
-        return AuthResponse.builder()
-                .token(accessToken)
-                .refreshToken(refreshToken)
-                .usuarioResponse(UsuarioMapper.toDto(usuario))
-                .expirationTime(jwtService.getEXPIRATION_TIME())
-                .expirationTimeRefresh(jwtService.getEXPIRATION_TIME_REFRESH())
-                .build();
+        return generateAuthResponse(usuario, ip, userAgent);
     }
 
-    public UsuarioResponse me(UserDetails userDetails){
-        if (!(userDetails instanceof Usuario usuario)){
-            throw  new IllegalStateException("UserDetails no es una instancia de usuario");
-        }
+    @Override
+    public UsuarioResponse getUserProfile(Usuario usuario) {
         UsuarioResponse usuarioResponse = UsuarioMapper.toDto(usuario);
         buildResponseByDentistRole(usuario, usuarioResponse);
         return usuarioResponse;
     }
 
-    public String refreshToken(String refreshToken){
+    @Override
+    @Transactional
+    public String refreshAccessToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new InvalidTokenException("No se encontró el refresh token.");
         }
@@ -135,16 +119,46 @@ public class DefaultAuthService implements AuthService {
 
         if (session.getExpiryDate().isBefore(Instant.now())) {
             sessionRepository.delete(session);
-            throw new TokenExpiredException("El refresh token ha expirado.");
+            throw new TokenExpiredException("El refresh token ha expirado. Por favor, inicie sesión nuevamente.");
         }
 
         Usuario usuario = session.getUsuario();
         return jwtService.getToken(usuario);
     }
 
+    @Override
+    @Transactional
+    public void invalidateUserSessions(Usuario usuario) {
+        sessionRepository.deleteByUsuario(usuario);
+    }
 
+    /**
+     * Helper method to generate AuthResponse, consolidating token generation and session saving.
+     */
+    private AuthResponse generateAuthResponse(Usuario usuario, String ip, String userAgent) {
+        UsuarioResponse usuarioResponse = UsuarioMapper.toDto(usuario);
+        buildResponseByDentistRole(usuario, usuarioResponse);
+
+        String accessToken = jwtService.getToken(usuario);
+        String refreshToken = jwtService.generateRefreshToken(usuario);
+
+        saveSession(refreshToken, ip, userAgent, usuario);
+
+        return AuthResponse.builder()
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .expirationTime(jwtService.getEXPIRATION_TIME())
+                .expirationTimeRefresh(jwtService.getEXPIRATION_TIME_REFRESH())
+                .usuarioResponse(usuarioResponse)
+                .build();
+    }
+
+    /**
+     * Handles saving or updating the user session.
+     */
     private void saveSession(String token, String ip, String userAgent, Usuario usuario) {
         sessionRepository.findByToken(token).ifPresent(sessionRepository::delete);
+
         Session session = Session.builder()
                 .token(token)
                 .usuario(usuario)
@@ -155,11 +169,15 @@ public class DefaultAuthService implements AuthService {
         sessionRepository.save(session);
     }
 
-    private void buildResponseByDentistRole(Usuario usuario, UsuarioResponse usuarioResponse){
-        if (usuario.getRol().equals(Rol.DENTISTA)){
+    /**
+     * Enriches the UsuarioResponse with dentist-specific ID if the user is a dentist.
+     */
+    private void buildResponseByDentistRole(Usuario usuario, UsuarioResponse usuarioResponse) {
+        if (usuario.getRol().equals(Rol.DENTISTA)) {
             Specification<Dentista> specs = DentistaSpecification.conUsuarioId(usuario.getId());
             usuarioResponse.setId(dentistaRepository.findOne(specs)
-                    .orElseThrow(() -> new ResourceNotFoundException(Dentista.class, "usuarioId", usuario.getId())).getId());
+                    .orElseThrow(() -> new ResourceNotFoundException(Dentista.class, "usuarioId", usuario.getId()))
+                    .getId());
         }
     }
 }

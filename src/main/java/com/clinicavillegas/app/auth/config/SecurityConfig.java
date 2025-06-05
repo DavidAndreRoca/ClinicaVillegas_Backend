@@ -51,11 +51,6 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.TIPO_DOCUMENTO_BASE)).hasRole("ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.TIPO_DOCUMENTO_BASE)).hasRole("ADMINISTRADOR")
 
-                                .requestMatchers(HttpMethod.GET, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).permitAll()
-                                .requestMatchers(HttpMethod.POST, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).hasRole("ADMINISTRADOR")
-                                .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).hasRole("ADMINISTRADOR")
-                                .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.TIPO_TRATAMIENTO_BASE)).hasRole("ADMINISTRADOR")
-
                                 .requestMatchers(HttpMethod.GET, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasAnyRole("PACIENTE", "DENTISTA", "ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.POST, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasRole("ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")

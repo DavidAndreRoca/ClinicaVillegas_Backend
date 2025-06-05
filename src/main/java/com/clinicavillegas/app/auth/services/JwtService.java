@@ -37,7 +37,10 @@ public class JwtService {
     }
 
     public String getToken(Map<String, Object> extraClaims, UserDetails user) {
-        extraClaims.put("role", user.getAuthorities().stream().findFirst().orElseThrow().getAuthority().substring(5));
+        extraClaims.put("role", user.getAuthorities().stream()
+                .findFirst()
+                .map(grantedAuthority -> grantedAuthority.getAuthority().replace("ROLE_", ""))
+                .orElse("UNKNOWN"));
         if (user instanceof Usuario usuario){
             extraClaims.put("id", usuario.getId());
         }
@@ -97,7 +100,10 @@ public class JwtService {
     }
 
     public boolean isRefreshToken(String token) {
-        return "refresh".equals(getClaim(token, claims -> claims.get("type", String.class)));
+        try {
+            return "refresh".equals(getClaim(token, claims -> claims.get("type", String.class)));
+        } catch (Exception e) {
+            return false;
+        }
     }
-
 }
