@@ -1,17 +1,13 @@
 package com.clinicavillegas.app.auth.services;
 
-import com.clinicavillegas.app.appointment.models.Dentista;
-import com.clinicavillegas.app.appointment.repositories.DentistaRepository;
-import com.clinicavillegas.app.appointment.specifications.DentistaSpecification;
-import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Usuario;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+@Getter
 @Service
 public class JwtService {
 
@@ -30,11 +27,10 @@ public class JwtService {
     @Value("${app.jwt.expiration-time}")
     private long EXPIRATION_TIME;
 
-    private final DentistaRepository dentistaRepository;
+    @Value("${app.jwt.expiration-time-refresh}")
+    private long EXPIRATION_TIME_REFRESH;
 
-    public JwtService(DentistaRepository dentistaRepository) {
-        this.dentistaRepository = dentistaRepository;
-    }
+    public JwtService() {}
 
     public String getToken(UserDetails user) {
         return getToken(new HashMap<>(), user);
@@ -42,18 +38,14 @@ public class JwtService {
 
     public String getToken(Map<String, Object> extraClaims, UserDetails user) {
         extraClaims.put("role", user.getAuthorities().stream().findFirst().orElseThrow().getAuthority().substring(5));
-        if (user instanceof Usuario usuario) {
+        if (user instanceof Usuario usuario){
             extraClaims.put("id", usuario.getId());
-            if (usuario.getRol().equals(Rol.DENTISTA)) {
-                Specification<Dentista> specs = DentistaSpecification.conUsuarioId(usuario.getId());
-                extraClaims.put("dentistaId", dentistaRepository.findAll(specs).getFirst().getId());
-            }
         }
         return Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(user.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis()+ EXPIRATION_TIME * 1000))
+                .setExpiration(new Date(System.currentTimeMillis() + (EXPIRATION_TIME * 1000)))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -89,11 +81,23 @@ public class JwtService {
         return getClaim(token, Claims::getExpiration);
     }
 
-    public long getDefaultExpirationTime(){
-        return EXPIRATION_TIME;
-    }
-
     private boolean isTokenExpired(String token){
         return getExpiration(token).before(new Date());
     }
+
+    public String generateRefreshToken(Usuario usuario) {
+        Map<String, Object> claims = Map.of("type", "refresh");
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(usuario.getUsername())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + (EXPIRATION_TIME_REFRESH *1000))) // 7 días
+                .signWith(getKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public boolean isRefreshToken(String token) {
+        return "refresh".equals(getClaim(token, claims -> claims.get("type", String.class)));
+    }
+
 }

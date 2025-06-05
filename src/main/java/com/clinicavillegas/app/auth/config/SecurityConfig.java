@@ -68,7 +68,8 @@ public class SecurityConfig {
 
                                 .requestMatchers(deepMatcher(EndpointPaths.CITA_BASE)).hasAnyRole("PACIENTE", "DENTISTA", "ADMINISTRADOR")
 
-                                .requestMatchers(deepMatcher(EndpointPaths.AUTH_BASE)).permitAll()
+                                .requestMatchers(HttpMethod.POST ,deepMatcher(EndpointPaths.AUTH_BASE)).permitAll()
+                                .requestMatchers(HttpMethod.GET ,deepMatcher(EndpointPaths.AUTH_BASE)).authenticated()
 
                                 .requestMatchers(deepMatcher(EndpointPaths.EMAIL_BASE)).permitAll()
 

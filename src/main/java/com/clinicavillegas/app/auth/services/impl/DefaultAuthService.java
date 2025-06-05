@@ -6,6 +6,10 @@ import com.clinicavillegas.app.appointment.specifications.DentistaSpecification;
 import com.clinicavillegas.app.auth.dto.request.LoginRequest;
 import com.clinicavillegas.app.auth.dto.request.RegisterRequest;
 import com.clinicavillegas.app.auth.dto.response.AuthResponse;
+import com.clinicavillegas.app.auth.exceptions.InvalidTokenException;
+import com.clinicavillegas.app.auth.exceptions.TokenExpiredException;
+import com.clinicavillegas.app.auth.models.Session;
+import com.clinicavillegas.app.auth.repositories.SessionRepository;
 import com.clinicavillegas.app.auth.services.AuthService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
@@ -24,6 +28,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+
 @Service
 public class DefaultAuthService implements AuthService {
     private final JwtService jwtService;
@@ -38,16 +45,19 @@ public class DefaultAuthService implements AuthService {
 
     private final DentistaRepository dentistaRepository;
 
-    public DefaultAuthService(JwtService jwtService, UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, TipoDocumentoRepository tipoDocumentoRepository, DentistaRepository dentistaRepository) {
+    private final SessionRepository sessionRepository;
+
+    public DefaultAuthService(JwtService jwtService, UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, TipoDocumentoRepository tipoDocumentoRepository, DentistaRepository dentistaRepository, SessionRepository sessionRepository) {
         this.jwtService = jwtService;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tipoDocumentoRepository = tipoDocumentoRepository;
         this.dentistaRepository = dentistaRepository;
+        this.sessionRepository = sessionRepository;
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String ip, String userAgent) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getContrasena())
         );
@@ -56,14 +66,19 @@ public class DefaultAuthService implements AuthService {
         );
         UsuarioResponse usuarioResponse = UsuarioMapper.toDto(usuario);
         buildResponseByDentistRole(usuario, usuarioResponse);
+        String accessToken = jwtService.getToken(usuario);
+        String refreshToken = jwtService.generateRefreshToken(usuario);
+        saveSession(refreshToken, ip, userAgent, usuario);
         return AuthResponse.builder()
-                .token(jwtService.getToken(usuario))
-                .expirationTime(jwtService.getDefaultExpirationTime())
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .expirationTime(jwtService.getEXPIRATION_TIME())
+                .expirationTimeRefresh(jwtService.getEXPIRATION_TIME_REFRESH())
                 .usuarioResponse(usuarioResponse)
                 .build();
     }
 
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, String ip, String userAgent) {
         TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(request.getTipoDocumento()).orElseThrow(
                 () -> new ResourceNotFoundException(TipoDocumento.class, "acrónimo", request.getTipoDocumento())
         );
@@ -85,11 +100,15 @@ public class DefaultAuthService implements AuthService {
                 .build();
 
         usuarioRepository.save(usuario);
-
+        String accessToken = jwtService.getToken(usuario);
+        String refreshToken = jwtService.generateRefreshToken(usuario);
+        saveSession(refreshToken, ip, userAgent, usuario);
         return AuthResponse.builder()
-                .token(jwtService.getToken(usuario))
+                .token(accessToken)
+                .refreshToken(refreshToken)
                 .usuarioResponse(UsuarioMapper.toDto(usuario))
-                .expirationTime(jwtService.getDefaultExpirationTime())
+                .expirationTime(jwtService.getEXPIRATION_TIME())
+                .expirationTimeRefresh(jwtService.getEXPIRATION_TIME_REFRESH())
                 .build();
     }
 
@@ -100,6 +119,40 @@ public class DefaultAuthService implements AuthService {
         UsuarioResponse usuarioResponse = UsuarioMapper.toDto(usuario);
         buildResponseByDentistRole(usuario, usuarioResponse);
         return usuarioResponse;
+    }
+
+    public String refreshToken(String refreshToken){
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new InvalidTokenException("No se encontró el refresh token.");
+        }
+
+        if (!jwtService.isRefreshToken(refreshToken)) {
+            throw new InvalidTokenException("El token proporcionado no es un refresh token válido.");
+        }
+
+        Session session = sessionRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new InvalidTokenException("Refresh token no reconocido o ya ha sido invalidado."));
+
+        if (session.getExpiryDate().isBefore(Instant.now())) {
+            sessionRepository.delete(session);
+            throw new TokenExpiredException("El refresh token ha expirado.");
+        }
+
+        Usuario usuario = session.getUsuario();
+        return jwtService.getToken(usuario);
+    }
+
+
+    private void saveSession(String token, String ip, String userAgent, Usuario usuario) {
+        sessionRepository.findByToken(token).ifPresent(sessionRepository::delete);
+        Session session = Session.builder()
+                .token(token)
+                .usuario(usuario)
+                .ipAddress(ip)
+                .userAgent(userAgent)
+                .expiryDate(Instant.now().plus(jwtService.getEXPIRATION_TIME_REFRESH(), ChronoUnit.SECONDS))
+                .build();
+        sessionRepository.save(session);
     }
 
     private void buildResponseByDentistRole(Usuario usuario, UsuarioResponse usuarioResponse){

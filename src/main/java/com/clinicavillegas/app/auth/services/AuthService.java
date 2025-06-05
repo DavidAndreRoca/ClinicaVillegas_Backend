@@ -7,7 +7,8 @@ import com.clinicavillegas.app.user.dto.response.UsuarioResponse;
 import org.springframework.security.core.userdetails.UserDetails;
 
 public interface AuthService {
-    AuthResponse login(LoginRequest request);
-    AuthResponse register(RegisterRequest request);
+    AuthResponse login(LoginRequest request, String ip, String userAgent);
+    AuthResponse register(RegisterRequest request,  String ip, String userAgent);
     UsuarioResponse me(UserDetails userDetails);
+    String refreshToken(String refreshToken);
 }

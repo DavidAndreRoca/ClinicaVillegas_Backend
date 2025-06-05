@@ -1,6 +1,8 @@
 package com.clinicavillegas.app.common;
 
 
+import com.clinicavillegas.app.auth.exceptions.InvalidTokenException;
+import com.clinicavillegas.app.auth.exceptions.TokenExpiredException;
 import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +34,18 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("mensaje", "Error interno: " + ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidToken(InvalidTokenException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TokenExpiredException.class)
+    public ResponseEntity<Map<String, String>> handleTokenExpired(TokenExpiredException ex) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", ex.getMessage()));
     }
 }
