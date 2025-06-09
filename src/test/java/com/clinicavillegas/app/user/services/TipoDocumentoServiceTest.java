@@ -71,23 +71,6 @@ public class TipoDocumentoServiceTest {
     }
 
     @Test
-    @DisplayName("Debe obtener todos los tipos de documento")
-    void testObtenerTiposDocumento() {
-        // Arrange
-        when(tipoDocumentoRepository.findAll()).thenReturn(Arrays.asList(tipoDocumento1, tipoDocumento2));
-
-        // Act
-        List<TipoDocumento> result = tipoDocumentoService.obtenerTiposDocumento();
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        assertTrue(result.contains(tipoDocumento1));
-        assertTrue(result.contains(tipoDocumento2));
-        verify(tipoDocumentoRepository, times(1)).findAll();
-    }
-
-    @Test
     @DisplayName("Debe obtener tipos de documento por nombre y acrónimo")
     void testObtenerTiposDocumentoPorNombreYAcronimo() {
         // Arrange

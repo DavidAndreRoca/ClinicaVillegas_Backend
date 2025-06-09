@@ -45,3 +45,8 @@ app:
 
   jwt:
     secret: ${JWT_SECRET}
+
+  cache:
+    user-info:
+      ttl-hours: 1
+      max-size: 500
