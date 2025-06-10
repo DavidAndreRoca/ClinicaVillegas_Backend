@@ -94,9 +94,9 @@ public class DefaultCitaService implements CitaService {
     }
 
     @Caching(evict = {
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true), // Invalida todas las listas
-            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"), // Invalida caché del usuario afectado
-            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId") // Invalida caché del dentista afectado
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"),
+            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId")
     })
     public void agregarCita(CitaRequest citaRequest) {
         log.info("Agregando nueva cita: {}", citaRequest);
@@ -171,15 +171,14 @@ public class DefaultCitaService implements CitaService {
     }
 
     @Caching(evict = {
-            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"), // Invalida la cita individual
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true) // Invalida todas las listas
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
     })
     public void atenderCita(Long id) {
         log.info("Marcando cita como atendida en la base de datos y caché para ID: {}", id);
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
-        evictCitasRelatedCaches(cita.getUsuario().getId(), cita.getDentista().getId());
         cita.setEstado("Atendida");
         citaRepository.save(cita);
     }
@@ -193,8 +192,6 @@ public class DefaultCitaService implements CitaService {
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
-
-        evictCitasRelatedCaches(cita.getUsuario().getId(), cita.getDentista().getId());
         cita.setEstado("Cancelada");
         citaRepository.save(cita);
     }
@@ -239,19 +236,8 @@ public class DefaultCitaService implements CitaService {
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
-
-        evictCitasRelatedCaches(cita.getUsuario().getId(), cita.getDentista().getId());
         cita.setHora(request.getHora());
         cita.setFecha(request.getFecha());
         citaRepository.save(cita);
-    }
-
-
-    @Caching(evict = {
-            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#usuarioId"),
-            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#dentistaId")
-    })
-    private void evictCitasRelatedCaches(Long usuarioId, Long dentistaId) {
-        log.debug("Invalidando cachés específicos de citas para usuarioId: {} y dentistaId: {}", usuarioId, dentistaId);
     }
 }
