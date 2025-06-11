@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.user.controllers;
 
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.clinicavillegas.app.user.dto.request.UsuarioRequest;
 import com.clinicavillegas.app.user.dto.response.UsuarioResponse;
@@ -43,6 +44,10 @@ public class UsuarioControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
 

@@ -3,6 +3,7 @@ package com.clinicavillegas.app.appointment.controllers;
 import com.clinicavillegas.app.appointment.dto.request.TratamientoRequest;
 import com.clinicavillegas.app.appointment.models.Tratamiento;
 import com.clinicavillegas.app.appointment.services.TratamientoService;
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,10 @@ public class TratamientoControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
 
