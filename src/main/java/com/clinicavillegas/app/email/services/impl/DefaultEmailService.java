@@ -46,7 +46,8 @@ public class DefaultEmailService implements EmailService {
     public String enviarCodigoVerificacion(String email) {
 
         Random random = new Random();
-        int code = random.nextInt(999999);
+        int codeInt = random.nextInt(1000000);
+        String code = String.format("%06d", codeInt);
         try {
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
 
@@ -64,7 +65,7 @@ public class DefaultEmailService implements EmailService {
         } catch (MessagingException e) {
             log.error("Error al enviar el código por correo: {}", e.getMessage());
         }
-        return String.valueOf(code);
+        return code;
     }
 
     public void enviarRecordatorio(Cita cita) {
