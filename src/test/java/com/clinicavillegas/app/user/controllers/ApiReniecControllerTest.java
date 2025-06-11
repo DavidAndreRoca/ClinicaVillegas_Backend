@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.user.controllers;
 
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.clinicavillegas.app.user.services.ApiReniecService;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,10 @@ public class ApiReniecControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
 

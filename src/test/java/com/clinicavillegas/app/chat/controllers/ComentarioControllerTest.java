@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.chat.controllers;
 
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.chat.dto.request.ComentarioRequest;
 import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.services.ComentarioService;
@@ -47,6 +48,10 @@ public class ComentarioControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
 

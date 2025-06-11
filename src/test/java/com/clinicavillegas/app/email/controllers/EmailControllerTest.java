@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.email.controllers;
 
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.clinicavillegas.app.email.dto.CodeRequest;
 import com.clinicavillegas.app.email.dto.EmailRequest;
@@ -46,6 +47,10 @@ public class EmailControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
 

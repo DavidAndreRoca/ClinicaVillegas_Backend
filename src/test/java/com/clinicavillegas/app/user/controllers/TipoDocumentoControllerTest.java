@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.user.controllers;
 
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.clinicavillegas.app.user.dto.request.TipoDocumentoRequest;
 import com.clinicavillegas.app.user.models.TipoDocumento;
@@ -44,6 +45,10 @@ public class TipoDocumentoControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
     @Test
