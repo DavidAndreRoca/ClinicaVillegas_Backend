@@ -45,6 +45,8 @@ app:
 
   jwt:
     secret: ${JWT_SECRET}
+    expiration-time: 14400
+    expiration-time-refresh: 604800
 
   cache:
     user-info:

@@ -5,6 +5,7 @@ import com.clinicavillegas.app.appointment.dto.request.CitaRequest;
 import com.clinicavillegas.app.appointment.dto.request.ValidacionCitaRequest;
 import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
 import com.clinicavillegas.app.appointment.services.CitaService;
+import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -50,6 +51,10 @@ public class CitaControllerTest {
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
+        }
+        @Bean
+        public CookieService cookieService(){
+            return mock(CookieService.class);
         }
     }
     @Test
