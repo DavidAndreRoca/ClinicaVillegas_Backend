@@ -19,6 +19,10 @@ import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
 import com.clinicavillegas.app.user.repositories.TipoDocumentoRepository;
 import com.clinicavillegas.app.user.repositories.UsuarioRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -28,16 +32,19 @@ import java.time.LocalTime;
 import java.util.List;
 
 @Service
+@Slf4j
 public class DefaultCitaService implements CitaService {
 
+    private static final String CACHE_CITAS_LISTA = "citasLista";
+    private static final String CACHE_CITA_POR_ID = "citaPorId";
+    private static final String CACHE_CITAS_POR_USUARIO = "citasPorUsuario";
+    private static final String CACHE_CITAS_POR_DENTISTA = "citasPorDentista";
+
+
     private final CitaRepository citaRepository;
-
     private final UsuarioRepository usuarioRepository;
-
     private final DentistaRepository dentistaRepository;
-
     private final TratamientoRepository tratamientoRepository;
-
     private final TipoDocumentoRepository tipoDocumentoRepository;
 
     public DefaultCitaService(CitaRepository citaRepository, UsuarioRepository usuarioRepository, DentistaRepository dentistaRepository, TratamientoRepository tratamientoRepository, TipoDocumentoRepository tipoDocumentoRepository) {
@@ -48,9 +55,11 @@ public class DefaultCitaService implements CitaService {
         this.tipoDocumentoRepository = tipoDocumentoRepository;
     }
 
-
+    @Cacheable(value = CACHE_CITAS_LISTA, key = "{#usuarioId, #dentistaId, #estado, #fechaInicio, #fechaFin, #tratamientoId, #sexo}")
     public List<CitaResponse> obtenerCitas(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
                                            LocalDate fechaFin, Long tratamientoId, String sexo) {
+        log.info("Obteniendo citas de la base de datos con filtros: usuarioId={}, dentistaId={}, estado={}, fechaInicio={}, fechaFin={}, tratamientoId={}, sexo={}",
+                usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);
         Specification<Cita> specs = CitaSpecification.conUsuarioId(usuarioId)
                 .and(CitaSpecification.conDentistaId(dentistaId))
                 .and(CitaSpecification.conRangoFecha(fechaInicio, fechaFin))
@@ -66,21 +75,31 @@ public class DefaultCitaService implements CitaService {
         return citas.stream().map(CitaMapper::toDto).toList();
     }
 
+    @Cacheable(value = CACHE_CITAS_POR_USUARIO, key = "#usuarioId")
     public List<Cita> obtenerCitasPorUsuario(Long usuarioId) {
+        log.info("Obteniendo citas por usuario de la base de datos para ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(
                 () -> new ResourceNotFoundException(Usuario.class, usuarioId)
         );
         return citaRepository.findByUsuario(usuario);
     }
 
+    @Cacheable(value = CACHE_CITAS_POR_DENTISTA, key = "#dentistaId")
     public List<Cita> obtenerCitasPorDentista(Long dentistaId) {
+        log.info("Obteniendo citas por dentista de la base de datos para ID: {}", dentistaId);
         Dentista dentista = dentistaRepository.findById(dentistaId).orElseThrow(
                 () -> new ResourceNotFoundException(Dentista.class, dentistaId)
         );
         return citaRepository.findByDentista(dentista);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"),
+            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId")
+    })
     public void agregarCita(CitaRequest citaRequest) {
+        log.info("Agregando nueva cita: {}", citaRequest);
         TipoDocumento tipoDocumento = tipoDocumentoRepository.findByAcronimo(citaRequest.getTipoDocumento()).orElseThrow(
                 () -> new ResourceNotFoundException(TipoDocumento.class, "Acrónimo", citaRequest.getTipoDocumento())
         );
@@ -112,7 +131,14 @@ public class DefaultCitaService implements CitaService {
         citaRepository.save(cita);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"),
+            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId")
+    })
     public void actualizarCita(Long id, CitaRequest citaRequest) {
+        log.info("Actualizando cita en la base de datos y caché para ID: {}", id);
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
@@ -144,7 +170,12 @@ public class DefaultCitaService implements CitaService {
         citaRepository.save(cita);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
+    })
     public void atenderCita(Long id) {
+        log.info("Marcando cita como atendida en la base de datos y caché para ID: {}", id);
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
@@ -152,7 +183,12 @@ public class DefaultCitaService implements CitaService {
         citaRepository.save(cita);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
+    })
     public void eliminarCita(Long id) {
+        log.info("Marcando cita como cancelada (lógico) en la base de datos y caché para ID: {}", id);
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
@@ -161,6 +197,8 @@ public class DefaultCitaService implements CitaService {
     }
 
     public boolean validarDisponibilidad(ValidacionCitaRequest request) {
+        log.info("Validando disponibilidad para fecha: {}, hora: {}, dentistaId: {}, tratamientoId: {}",
+                request.getFecha(), request.getHora(), request.getDentistaId(), request.getTratamientoId());
         LocalDate fecha = LocalDate.parse(request.getFecha());
         LocalTime hora = LocalTime.parse(request.getHora());
 
@@ -186,10 +224,15 @@ public class DefaultCitaService implements CitaService {
                 return false;
             }
         }
-
         return true;
     }
+
+    @Caching(evict = {
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
+            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
+    })
     public void reprogramarCita(Long id, CitaReprogramarRequest request) {
+        log.info("Reprogramando cita en la base de datos y caché para ID: {}", id);
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );

@@ -32,6 +32,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authRequest -> authRequest
+                                .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers("/api/usuarios/**").permitAll()
+                                .requestMatchers("/api/citas/**").permitAll()
+                                .requestMatchers("/api/dentistas/**").permitAll()
+                                .requestMatchers("/api/comentarios/**").permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                                 .requestMatchers(deepMatcher(EndpointPaths.USUARIO_BASE)).hasRole("ADMINISTRADOR")
@@ -77,6 +82,7 @@ public class SecurityConfig {
 
                                 .requestMatchers(deepMatcher(EndpointPaths.REPORTE_BASE)).permitAll()
                                 .anyRequest().denyAll()
+
                 )
                 .sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)

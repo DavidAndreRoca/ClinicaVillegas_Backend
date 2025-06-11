@@ -8,8 +8,6 @@ import java.util.List;
 public interface TipoDocumentoService {
     void agregarTipoDocumento(TipoDocumentoRequest request);
 
-    List<TipoDocumento> obtenerTiposDocumento();
-
     List<TipoDocumento> obtenerTiposDocumento(String nombre, String acronimo);
 
     void actualizarTipoDocumento(Long id, TipoDocumentoRequest request);
