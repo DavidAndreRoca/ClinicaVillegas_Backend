@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.reports.controllers;
 
+import com.clinicavillegas.app.common.EndpointPaths;
 import com.clinicavillegas.app.reports.dto.ReporteRequestDTO;
 import com.clinicavillegas.app.reports.services.ReporteService;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/reportes")
+@RequestMapping(EndpointPaths.REPORTE_BASE)
 public class ReporteController {
 
     private final ReporteService reporteService;
