@@ -39,26 +39,23 @@ public class ReporteService {
 
         // Filas
         for (String fila : dto.getFilas()) {
-            Expression<?> expr = mapCampoToExpression(fila, root, usuarioDentistaJoin, tratamientoJoin);
+            Expression<String> expr = mapCampoToExpression(fila, root, usuarioDentistaJoin, tratamientoJoin);
             selections.add(expr.alias(fila));
             groupByExpressions.add(expr);
         }
 
-        // Columnas
+        // Columnas (solo se soporta una para pivot)
         if (dto.getColumnas() != null && !dto.getColumnas().isEmpty()) {
             String campoColumna = dto.getColumnas().getFirst();
             List<String> valoresColumna = obtenerValoresUnicosParaColumna(campoColumna);
 
             for (String valor : valoresColumna) {
+                Expression<String> columnaExpr = mapCampoToExpression(campoColumna, root, usuarioDentistaJoin, tratamientoJoin);
                 Expression<?> caseExpr = buildAggregation(
                         dto.getAgregacion(),
-                        cb.selectCase().when(
-                                cb.equal(
-                                        mapCampoToExpression(campoColumna, root, usuarioDentistaJoin, tratamientoJoin),
-                                        valor
-                                ),
-                                root.get(dto.getValor())
-                        ).otherwise((Object) null),
+                        cb.selectCase()
+                                .when(cb.equal(cb.upper(columnaExpr.as(String.class)), valor.toUpperCase()), root.get(dto.getValor()))
+                                .otherwise((Object) null),
                         cb
                 );
                 selections.add(caseExpr.alias(valor));
@@ -74,7 +71,7 @@ public class ReporteService {
             query.groupBy(groupByExpressions);
         }
 
-        // Filtros
+        // Filtros dinámicos
         List<Predicate> predicates = new ArrayList<>();
         if (dto.getFiltros() != null) {
             for (Map.Entry<String, Object> filtro : dto.getFiltros().entrySet()) {
@@ -100,22 +97,30 @@ public class ReporteService {
                 .toList();
     }
 
+    // 🎯 Conversión segura de campo a expresión string-compatible
     private Expression<String> mapCampoToExpression(
             String campo,
             Root<Cita> root,
             Join<Dentista, Usuario> usuarioDentistaJoin,
             Join<Cita, Tratamiento> tratamientoJoin
     ) {
-        return switch (campo) {
-            case "estado" -> root.get("estado");
-            case "sexo" -> root.get("sexo").as(String.class); // ✅ conversión correcta
-            case "tratamiento" -> tratamientoJoin.get("nombre");
-            case "dentista" -> usuarioDentistaJoin.get("nombres");
-            case "fecha" -> root.get("fecha").as(String.class);
-            default -> root.get(campo).as(String.class);
-        };
+        Path<?> path;
+        switch (campo) {
+            case "estado" -> path = root.get("estado");
+            case "sexo" -> path = root.get("sexo");
+            case "tratamiento" -> path = tratamientoJoin.get("nombre");
+            case "dentista" -> path = usuarioDentistaJoin.get("nombres");
+            case "fecha" -> path = root.get("fecha");
+            default -> path = root.get(campo);
+        }
+
+        // Si es enum, casteamos a String de forma segura
+        path.getJavaType();
+
+        return path.as(String.class);
     }
 
+    // 🎯 Agregación dinámica
     private Expression<?> buildAggregation(String tipo, Expression<?> campo, CriteriaBuilder cb) {
         return switch (tipo.toLowerCase()) {
             case "count" -> cb.count(campo);
@@ -127,6 +132,7 @@ public class ReporteService {
         };
     }
 
+    // 🎯 Obtener valores únicos (distintos) para la columna dinámica
     private List<String> obtenerValoresUnicosParaColumna(String campo) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<String> cq = cb.createQuery(String.class);
@@ -137,8 +143,9 @@ public class ReporteService {
         Join<Dentista, Usuario> usuarioDentistaJoin = dentistaJoin.join("usuario", JoinType.LEFT);
 
         Expression<String> expr = mapCampoToExpression(campo, root, usuarioDentistaJoin, tratamientoJoin);
-        cq.select(expr).distinct(true);
+        cq.select(cb.upper(expr.as(String.class))).distinct(true);
         return entityManager.createQuery(cq).getResultList();
     }
 }
+
 
