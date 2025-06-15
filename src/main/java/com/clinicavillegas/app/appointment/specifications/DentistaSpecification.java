@@ -28,7 +28,7 @@ public class DentistaSpecification {
     public static Specification<Dentista> conEstado(Boolean estado){
         return (Root<Dentista> root, CriteriaQuery<?> query, CriteriaBuilder builder) -> {
             if (estado == null) {
-                builder.conjunction();
+                return builder.conjunction();
             }
             return builder.equal(root.get("estado"), estado);
         };
@@ -36,7 +36,7 @@ public class DentistaSpecification {
     public static Specification<Dentista> conUsuarioId(Long usuarioId){
         return (Root<Dentista> root, CriteriaQuery<?> query, CriteriaBuilder builder) -> {
             if (usuarioId == null) {
-                builder.conjunction();
+                return builder.conjunction();
             }
             return builder.equal(root.get("usuario").get("id"), usuarioId);
         };

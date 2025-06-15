@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -35,10 +37,11 @@ import java.util.List;
 @Slf4j
 public class DefaultCitaService implements CitaService {
 
-    private static final String CACHE_CITAS_LISTA = "citasLista";
+    private static final String CACHE_CITAS_LISTA_PAGINADA = "citasListaPaginada"; // Nuevo nombre para cache de paginación
+    private static final String CACHE_CITAS_LISTA_SIN_PAGINAR = "citasListaSinPaginar"; // Nuevo nombre para cache sin paginar
     private static final String CACHE_CITA_POR_ID = "citaPorId";
-    private static final String CACHE_CITAS_POR_USUARIO = "citasPorUsuario";
-    private static final String CACHE_CITAS_POR_DENTISTA = "citasPorDentista";
+    private static final String CACHE_CITAS_POR_USUARIO = "citasPorUsuario"; // Podría ser una lista sin paginar o una paginada por usuario
+    private static final String CACHE_CITAS_POR_DENTISTA = "citasPorDentista"; // Podría ser una lista sin paginar o una paginada por dentista
 
 
     private final CitaRepository citaRepository;
@@ -55,27 +58,44 @@ public class DefaultCitaService implements CitaService {
         this.tipoDocumentoRepository = tipoDocumentoRepository;
     }
 
-    @Cacheable(value = CACHE_CITAS_LISTA, key = "{#usuarioId, #dentistaId, #estado, #fechaInicio, #fechaFin, #tratamientoId, #sexo}")
-    public List<CitaResponse> obtenerCitas(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
-                                           LocalDate fechaFin, Long tratamientoId, String sexo) {
-        log.info("Obteniendo citas de la base de datos con filtros: usuarioId={}, dentistaId={}, estado={}, fechaInicio={}, fechaFin={}, tratamientoId={}, sexo={}",
-                usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);
-        Specification<Cita> specs = CitaSpecification.conUsuarioId(usuarioId)
+    // Método auxiliar para construir la Specification
+    private Specification<Cita> buildCitaSpecification(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
+                                                       LocalDate fechaFin, Long tratamientoId, String sexo) {
+        if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
+            throw new IllegalArgumentException("La fecha de inicio debe ser anterior a la de fin");
+        }
+
+        return CitaSpecification.conUsuarioId(usuarioId)
                 .and(CitaSpecification.conDentistaId(dentistaId))
                 .and(CitaSpecification.conRangoFecha(fechaInicio, fechaFin))
                 .and(CitaSpecification.conTratamientoId(tratamientoId))
                 .and(CitaSpecification.conSexo(sexo))
                 .and(CitaSpecification.conEstado(estado));
-        if (fechaInicio != null && fechaFin != null) {
-            if (fechaInicio.isAfter(fechaFin)) {
-                throw new IllegalArgumentException("La fecha de inicio debe ser anterior a la de fin");
-            }
-        }
+    }
+
+    // MÉTODOS DE BÚSQUEDA
+
+    // 1. Método para obtener citas con paginación
+    @Cacheable(value = CACHE_CITAS_LISTA_PAGINADA, key = "{#usuarioId, #dentistaId, #estado, #fechaInicio, #fechaFin, #tratamientoId, #sexo, #pageable.pageNumber, #pageable.pageSize, #pageable.sort}")
+    public Page<CitaResponse> obtenerCitasPaginadas(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
+                                                    LocalDate fechaFin, Long tratamientoId, String sexo, Pageable pageable) {
+        log.info("Obteniendo citas PAGINADAS de la base de datos con filtros y paginación: pageable={}", pageable);
+        Specification<Cita> specs = buildCitaSpecification(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);
+        Page<Cita> citasPage = citaRepository.findAll(specs, pageable);
+        return citasPage.map(CitaMapper::toDto);
+    }
+
+    // 2. Método para obtener citas SIN paginación
+    @Cacheable(value = CACHE_CITAS_LISTA_SIN_PAGINAR, key = "{#usuarioId, #dentistaId, #estado, #fechaInicio, #fechaFin, #tratamientoId, #sexo}")
+    public List<CitaResponse> obtenerCitas(Long usuarioId, Long dentistaId, String estado, LocalDate fechaInicio,
+                                                        LocalDate fechaFin, Long tratamientoId, String sexo) {
+        log.info("Obteniendo citas SIN PAGINACIÓN de la base de datos con filtros.");
+        Specification<Cita> specs = buildCitaSpecification(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);
         List<Cita> citas = citaRepository.findAll(specs);
         return citas.stream().map(CitaMapper::toDto).toList();
     }
 
-    @Cacheable(value = CACHE_CITAS_POR_USUARIO, key = "#usuarioId")
+    // Puedes mantener estos si aún son útiles, aunque el método anterior con Specification es más flexible
     public List<Cita> obtenerCitasPorUsuario(Long usuarioId) {
         log.info("Obteniendo citas por usuario de la base de datos para ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(
@@ -84,7 +104,6 @@ public class DefaultCitaService implements CitaService {
         return citaRepository.findByUsuario(usuario);
     }
 
-    @Cacheable(value = CACHE_CITAS_POR_DENTISTA, key = "#dentistaId")
     public List<Cita> obtenerCitasPorDentista(Long dentistaId) {
         log.info("Obteniendo citas por dentista de la base de datos para ID: {}", dentistaId);
         Dentista dentista = dentistaRepository.findById(dentistaId).orElseThrow(
@@ -93,10 +112,14 @@ public class DefaultCitaService implements CitaService {
         return citaRepository.findByDentista(dentista);
     }
 
+    // MÉTODOS DE MODIFICACIÓN (INVALIDACIÓN DE CACHÉ)
+
     @Caching(evict = {
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true),
-            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"),
-            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId")
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id", allEntries = true), // Considera si necesitas invalidar ALL para #id
+            @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true), // Invalida todas las páginas
+            @CacheEvict(value = CACHE_CITAS_LISTA_SIN_PAGINAR, allEntries = true), // Invalida la lista completa sin paginar
+            @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"), // Si cacheas listas por usuario
+            @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId") // Si cacheas listas por dentista
     })
     public void agregarCita(CitaRequest citaRequest) {
         log.info("Agregando nueva cita: {}", citaRequest);
@@ -133,7 +156,8 @@ public class DefaultCitaService implements CitaService {
 
     @Caching(evict = {
             @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_LISTA_SIN_PAGINAR, allEntries = true),
             @CacheEvict(value = CACHE_CITAS_POR_USUARIO, key = "#citaRequest.usuarioId"),
             @CacheEvict(value = CACHE_CITAS_POR_DENTISTA, key = "#citaRequest.dentistaId")
     })
@@ -170,9 +194,16 @@ public class DefaultCitaService implements CitaService {
         citaRepository.save(cita);
     }
 
+    // Para atenderCita, eliminarCita y reprogramarCita, donde el request no contiene los IDs de usuario/dentista,
+    // es necesario cargar la cita para obtener esos IDs antes de la ejecución del método y así invalidar cachés.
+    // La forma más práctica con las anotaciones en métodos 'void' es re-evaluar la estrategia para estos dos cachés
+    // o aceptar que solo se invalidarán las listas generales y la cita por ID.
+    // Como acordamos no usar el método auxiliar y no poner anotaciones si no se puede acceder 'externamente',
+    // mantendremos solo la invalidación de la cita por ID y las listas ALL_ENTRIES.
     @Caching(evict = {
             @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
+            @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_LISTA_SIN_PAGINAR, allEntries = true)
     })
     public void atenderCita(Long id) {
         log.info("Marcando cita como atendida en la base de datos y caché para ID: {}", id);
@@ -185,7 +216,8 @@ public class DefaultCitaService implements CitaService {
 
     @Caching(evict = {
             @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
+            @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_LISTA_SIN_PAGINAR, allEntries = true)
     })
     public void eliminarCita(Long id) {
         log.info("Marcando cita como cancelada (lógico) en la base de datos y caché para ID: {}", id);
@@ -193,6 +225,21 @@ public class DefaultCitaService implements CitaService {
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
         cita.setEstado("Cancelada");
+        citaRepository.save(cita);
+    }
+
+    @Caching(evict = {
+            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
+            @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true),
+            @CacheEvict(value = CACHE_CITAS_LISTA_SIN_PAGINAR, allEntries = true)
+    })
+    public void reprogramarCita(Long id, CitaReprogramarRequest request) {
+        log.info("Reprogramando cita en la base de datos y caché para ID: {}", id);
+        Cita cita = citaRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException(Cita.class, id)
+        );
+        cita.setHora(request.getHora());
+        cita.setFecha(request.getFecha());
         citaRepository.save(cita);
     }
 
@@ -225,19 +272,5 @@ public class DefaultCitaService implements CitaService {
             }
         }
         return true;
-    }
-
-    @Caching(evict = {
-            @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
-            @CacheEvict(value = CACHE_CITAS_LISTA, allEntries = true)
-    })
-    public void reprogramarCita(Long id, CitaReprogramarRequest request) {
-        log.info("Reprogramando cita en la base de datos y caché para ID: {}", id);
-        Cita cita = citaRepository.findById(id).orElseThrow(
-                () -> new ResourceNotFoundException(Cita.class, id)
-        );
-        cita.setHora(request.getHora());
-        cita.setFecha(request.getFecha());
-        citaRepository.save(cita);
     }
 }

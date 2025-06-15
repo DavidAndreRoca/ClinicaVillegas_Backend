@@ -15,6 +15,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page; // Importar Page
+import org.springframework.data.domain.PageImpl; // Importar PageImpl
+import org.springframework.data.domain.PageRequest; // Importar PageRequest
+import org.springframework.data.domain.Pageable; // Importar Pageable
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -56,7 +60,7 @@ public class DentistaControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/dentistas - debe devolver lista de dentistas")
+    @DisplayName("GET /api/dentistas - debe devolver una página de dentistas (sin filtros, paginación por defecto)")
     void testObtenerDentistas() throws Exception {
         DentistaResponse response = DentistaResponse.builder()
                 .id(1L)
@@ -72,22 +76,33 @@ public class DentistaControllerTest {
                 .sexo("M")
                 .build();
 
-        Mockito.when(dentistaService.obtenerDentistas(null, null, null))
-                .thenReturn(List.of(response));
+        Page<DentistaResponse> mockPage = new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1);
+
+        Mockito.when(dentistaService.obtenerDentistasPaginados(
+                        Mockito.eq(null),
+                        Mockito.eq(null),
+                        Mockito.eq(null),
+                        Mockito.any(Pageable.class)))
+                .thenReturn(mockPage);
 
         mockMvc.perform(get("/api/dentistas"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1L))
-                .andExpect(jsonPath("$[0].ncolegiatura").value("NC12345"))
-                .andExpect(jsonPath("$[0].nombres").value("Carlos"))
-                .andExpect(jsonPath("$[0].apellidoPaterno").value("Gómez"))
-                .andExpect(jsonPath("$[0].apellidoMaterno").value("Fernández"))
-                .andExpect(jsonPath("$[0].especializacion").value("Ortodoncia"))
-                .andExpect(jsonPath("$[0].estado").value(true))
-                .andExpect(jsonPath("$[0].usuarioId").value(10))
-                .andExpect(jsonPath("$[0].correo").value("carlos.gomez@mail.com"))
-                .andExpect(jsonPath("$[0].telefono").value("999888777"))
-                .andExpect(jsonPath("$[0].sexo").value("M"));
+                .andExpect(jsonPath("$.content[0].id").value(1L))
+                .andExpect(jsonPath("$.content[0].ncolegiatura").value("NC12345"))
+                .andExpect(jsonPath("$.content[0].nombres").value("Carlos"))
+                .andExpect(jsonPath("$.content[0].apellidoPaterno").value("Gómez"))
+                .andExpect(jsonPath("$.content[0].apellidoMaterno").value("Fernández"))
+                .andExpect(jsonPath("$.content[0].especializacion").value("Ortodoncia"))
+                .andExpect(jsonPath("$.content[0].estado").value(true))
+                .andExpect(jsonPath("$.content[0].usuarioId").value(10))
+                .andExpect(jsonPath("$.content[0].correo").value("carlos.gomez@mail.com"))
+                .andExpect(jsonPath("$.content[0].telefono").value("999888777"))
+                .andExpect(jsonPath("$.content[0].sexo").value("M"))
+                // CAMBIO AQUÍ: Ahora las propiedades de paginación están en la raíz del JSON
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
     }
 
     @Test

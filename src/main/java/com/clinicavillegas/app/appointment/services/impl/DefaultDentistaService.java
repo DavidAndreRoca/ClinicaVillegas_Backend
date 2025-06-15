@@ -17,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -29,12 +31,11 @@ public class DefaultDentistaService implements DentistaService {
     private static final String CACHE_DENTISTAS_LISTA = "dentistasLista";
     private static final String CACHE_DENTISTA_POR_ID = "dentistaPorId";
     private static final String CACHE_ESPECIALIZACIONES_LISTA = "especializacionesLista";
+    private static final String CACHE_DENTISTAS_PAGINADOS = "dentistasPaginados";
 
 
     private final DentistaRepository dentistaRepository;
-
     private final UsuarioRepository usuarioRepository;
-
     private final HorarioRepository horarioRepository;
 
     public DefaultDentistaService(DentistaRepository dentistaRepository, UsuarioRepository usuarioRepository, HorarioRepository horarioRepository) {
@@ -58,11 +59,12 @@ public class DefaultDentistaService implements DentistaService {
 
     @Cacheable(value = CACHE_DENTISTAS_LISTA, key = "{#nombre, #especializacion, #usuarioId}")
     public List<DentistaResponse> obtenerDentistas(String nombre, String especializacion, Long usuarioId) {
-        log.info("Obteniendo dentistas de la base de datos con nombre: {}, especialización: {}, usuarioId: {}", nombre, especializacion, usuarioId);
+        log.info("Obteniendo dentistas de la base de datos (sin paginación) con nombre: {}, especialización: {}, usuarioId: {}", nombre, especializacion, usuarioId);
 
-        Specification<Dentista> specs = DentistaSpecification.conNombre(nombre)
+        Specification<Dentista> specs = Specification.where(DentistaSpecification.conNombre(nombre))
                 .and(DentistaSpecification.conEspecializacion(especializacion))
-                .and(DentistaSpecification.conEstado(true));
+                .and(DentistaSpecification.conEstado(true))
+                .and(DentistaSpecification.conUsuarioId(usuarioId)); // ¡Asegúrate de añadir esta línea aquí también si este método es usado!
 
         List<Dentista> dentistas = dentistaRepository.findAll(specs);
 
@@ -71,9 +73,25 @@ public class DefaultDentistaService implements DentistaService {
                 .toList();
     }
 
+    @Cacheable(value = CACHE_DENTISTAS_PAGINADOS, key = "{#nombre, #especializacion, #usuarioId, #pageable.pageNumber, #pageable.pageSize, #pageable.sort}")
+    public Page<DentistaResponse> obtenerDentistasPaginados(String nombre, String especializacion, Long usuarioId, Pageable pageable) {
+        log.info("Obteniendo dentistas paginados de la base de datos con nombre: {}, especialización: {}, usuarioId: {}, página: {}", nombre, especializacion, usuarioId, pageable);
+
+        Specification<Dentista> specs = Specification.where(DentistaSpecification.conNombre(nombre))
+                .and(DentistaSpecification.conEspecializacion(especializacion))
+                .and(DentistaSpecification.conEstado(true))
+                .and(DentistaSpecification.conUsuarioId(usuarioId)); // <--- ¡¡¡LÍNEA AÑADIDA / MODIFICADA!!!
+
+        Page<Dentista> dentistasPage = dentistaRepository.findAll(specs, pageable);
+
+        return dentistasPage.map(DentistaMapper::toDto);
+    }
+
+
     @Caching(evict = {
             @CacheEvict(value = CACHE_DENTISTAS_LISTA, allEntries = true),
-            @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true)
+            @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_DENTISTAS_PAGINADOS, allEntries = true)
     })
     public void agregarDentista(DentistaRequest request) {
         log.info("Agregando nuevo dentista para usuario ID: {}", request.getUsuarioId());
@@ -97,7 +115,8 @@ public class DefaultDentistaService implements DentistaService {
     @Caching(evict = {
             @CacheEvict(value = CACHE_DENTISTA_POR_ID, key = "#id"),
             @CacheEvict(value = CACHE_DENTISTAS_LISTA, allEntries = true),
-            @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true)
+            @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_DENTISTAS_PAGINADOS, allEntries = true)
     })
     public void actualizarDentista(Long id, DentistaRequest request) {
         log.info("Actualizando dentista en la base de datos y caché para ID: {}", id);
@@ -114,7 +133,6 @@ public class DefaultDentistaService implements DentistaService {
         usuarioActual.setRol(Rol.DENTISTA);
         usuarioRepository.save(usuarioActual);
 
-
         dentista.setUsuario(usuarioActual);
         dentista.setNColegiatura(request.getNColegiatura());
         dentista.setEspecializacion(request.getEspecializacion());
@@ -124,7 +142,8 @@ public class DefaultDentistaService implements DentistaService {
     @Caching(evict = {
             @CacheEvict(value = CACHE_DENTISTA_POR_ID, key = "#id"),
             @CacheEvict(value = CACHE_DENTISTAS_LISTA, allEntries = true),
-            @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true)
+            @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true),
+            @CacheEvict(value = CACHE_DENTISTAS_PAGINADOS, allEntries = true)
     })
     public void eliminarDentista(Long id) {
         log.info("Eliminando dentista (y sus horarios) de la base de datos y caché para ID: {}", id);
@@ -132,12 +151,16 @@ public class DefaultDentistaService implements DentistaService {
                 () -> new ResourceNotFoundException(Dentista.class, id)
         );
         List<Horario> horarios = horarioRepository.findByDentista(dentista);
-        for (Horario horario : horarios) {
-            horarioRepository.delete(horario);
+        if (!horarios.isEmpty()) {
+            for (Horario horario : horarios) {
+                horarioRepository.delete(horario);
+            }
         }
         Usuario usuario = dentista.getUsuario();
-        usuario.setRol(Rol.PACIENTE);
-        usuarioRepository.save(usuario);
+        if (usuario != null) {
+            usuario.setRol(Rol.PACIENTE);
+            usuarioRepository.save(usuario);
+        }
         dentistaRepository.delete(dentista);
     }
 

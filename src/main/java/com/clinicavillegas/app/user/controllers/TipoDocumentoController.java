@@ -5,6 +5,9 @@ import com.clinicavillegas.app.user.dto.request.TipoDocumentoRequest;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.services.TipoDocumentoService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,15 +26,21 @@ public class TipoDocumentoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TipoDocumento>> obtenerTiposDocumento(
+    public ResponseEntity<?> getTiposDocumento(
             @RequestParam(name = "nombre", required = false) String nombre,
-            @RequestParam(name = "acronimo", required = false) String acronimo
+            @RequestParam(name = "acronimo", required = false) String acronimo,
+            @RequestParam(name = "all", required = false, defaultValue = "false") boolean all,
+            @PageableDefault(page = 0, size = 10, sort = "nombre") Pageable pageable
     ){
-        List<TipoDocumento> tiposDocumento = tipoDocumentoService.obtenerTiposDocumento(nombre, acronimo);
-        if (tiposDocumento == null) {
-            return ResponseEntity.notFound().build();
+        if (all) {
+            // Llama al método para obtener la lista completa si all=true
+            List<TipoDocumento> tiposDocumento = tipoDocumentoService.obtenerTiposDocumento(nombre, acronimo);
+            return ResponseEntity.ok(tiposDocumento);
+        } else {
+            // Llama al método paginado por defecto
+            Page<TipoDocumento> tiposDocumentoPaginados = tipoDocumentoService.obtenerTiposDocumentoPaginados(nombre, acronimo, pageable);
+            return ResponseEntity.ok(tiposDocumentoPaginados);
         }
-        return ResponseEntity.ok(tiposDocumento);
     }
 
     @GetMapping("/{id}")

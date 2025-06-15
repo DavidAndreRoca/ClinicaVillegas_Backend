@@ -6,8 +6,11 @@ import com.clinicavillegas.app.appointment.repositories.TipoTratamientoRepositor
 import com.clinicavillegas.app.appointment.services.TipoTratamientoService;
 import com.clinicavillegas.app.appointment.specifications.TipoTratamientoSpecification;
 import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -19,9 +22,23 @@ public class DefaultTipoTratamientoService implements TipoTratamientoService {
         this.tipoTratamientoRepository = tipoTratamientoRepository;
     }
 
-    public List<TipoTratamiento> obtenerTiposTratamiento() {
-        Specification<TipoTratamiento> specs = TipoTratamientoSpecification.conEstado(true);
-        return tipoTratamientoRepository.findAll(specs);
+    @Override
+    @Transactional(readOnly = true)
+    // Este método mantiene el nombre 'obtenerTiposTratamiento' y ahora acepta filtros.
+    public List<TipoTratamiento> obtenerTiposTratamiento(String nombre, Boolean estado) {
+        Specification<TipoTratamiento> spec = Specification
+                .where(TipoTratamientoSpecification.conNombre(nombre))
+                .and(TipoTratamientoSpecification.conEstado(estado));
+        return tipoTratamientoRepository.findAll(spec);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TipoTratamiento> obtenerTiposTratamientoPaginados(String nombre, Boolean estado, Pageable pageable) {
+        Specification<TipoTratamiento> spec = Specification
+                .where(TipoTratamientoSpecification.conNombre(nombre))
+                .and(TipoTratamientoSpecification.conEstado(estado));
+        return tipoTratamientoRepository.findAll(spec, pageable);
     }
 
     public void agregarTipoTratamiento(TipoTratamientoRequest request) {

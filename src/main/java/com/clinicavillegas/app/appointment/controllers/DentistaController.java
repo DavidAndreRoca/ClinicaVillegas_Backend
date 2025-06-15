@@ -5,6 +5,9 @@ import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.services.DentistaService;
 import com.clinicavillegas.app.common.EndpointPaths;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault; // ¡Importar esta anotación!
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,13 +24,22 @@ public class DentistaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DentistaResponse>> obtenerDentistas(
+    public ResponseEntity<?> obtenerDentistas(
             @RequestParam(name = "nombre", required = false) String nombre,
             @RequestParam(name = "especializacion", required = false) String especializacion,
-            @RequestParam(name = "usuarioId", required = false) Long usuarioId
+            @RequestParam(name = "usuarioId", required = false) Long usuarioId,
+            @RequestParam(required = false, defaultValue = "false") boolean all, // Nuevo parámetro 'all'
+            @PageableDefault(page = 0, size = 10, sort = "id") Pageable pageable // Usamos 'id' como sort por defecto
     ) {
-        List<DentistaResponse> dentistas = dentistaService.obtenerDentistas(nombre, especializacion, usuarioId);
-        return ResponseEntity.ok(dentistas);
+        if (all) {
+            // Si 'all' es true, obtenemos todos los dentistas (sin paginación)
+            List<DentistaResponse> dentistas = dentistaService.obtenerDentistas(nombre, especializacion, usuarioId);
+            return ResponseEntity.ok(dentistas);
+        } else {
+            // Si 'all' es false (o no se especifica), obtenemos dentistas paginados
+            Page<DentistaResponse> dentistasPage = dentistaService.obtenerDentistasPaginados(nombre, especializacion, usuarioId, pageable);
+            return ResponseEntity.ok(dentistasPage); // Devuelve el objeto Page completo con metadata de paginación
+        }
     }
 
     @GetMapping("/especialidades")

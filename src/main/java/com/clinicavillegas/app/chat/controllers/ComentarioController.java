@@ -5,6 +5,8 @@ import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.services.ComentarioService;
 import com.clinicavillegas.app.common.EndpointPaths;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page; // Importar Page
+import org.springframework.data.domain.Pageable; // Importar Pageable
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,8 +24,10 @@ public class ComentarioController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ComentarioResponse>> obtenerComentarios(){
-        return ResponseEntity.ok(comentarioService.obtenerComentarios());
+    // Cambiado a Page y añadido Pageable como parámetro
+    // Spring automáticamente mapea los parámetros 'page', 'size', 'sort' de la URL a un objeto Pageable.
+    public ResponseEntity<Page<ComentarioResponse>> obtenerComentarios(Pageable pageable){
+        return ResponseEntity.ok(comentarioService.obtenerComentarios(pageable));
     }
 
     @PostMapping

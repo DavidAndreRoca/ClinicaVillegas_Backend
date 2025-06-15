@@ -33,7 +33,12 @@ spring:
 logging:
   level:
     org.springframework.security: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
     org.springframework.aop: DEBUG
+    org:
+      springframework:
+        cache: DEBUG
+
 
 app:
   frontend:

@@ -37,6 +37,10 @@ public class SecurityConfig {
                                 .requestMatchers("/api/citas/**").permitAll()
                                 .requestMatchers("/api/dentistas/**").permitAll()
                                 .requestMatchers("/api/comentarios/**").permitAll()
+                                .requestMatchers("/api/tratamientos/**").permitAll()
+                                .requestMatchers("/api/tipo-tratamiento/**").permitAll()
+                                .requestMatchers("/api/comentarios/**").permitAll()
+                                .requestMatchers("/api/tipo-documento/**").permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                                 .requestMatchers(deepMatcher(EndpointPaths.USUARIO_BASE)).hasRole("ADMINISTRADOR")
