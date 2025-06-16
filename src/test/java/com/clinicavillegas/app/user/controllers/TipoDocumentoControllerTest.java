@@ -6,6 +6,7 @@ import com.clinicavillegas.app.user.dto.request.TipoDocumentoRequest;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.services.TipoDocumentoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach; // Importar BeforeEach
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +15,19 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Collections;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -51,33 +60,115 @@ public class TipoDocumentoControllerTest {
             return mock(CookieService.class);
         }
     }
-    @Test
-    void testObtenerTiposDocumento() throws Exception {
-        TipoDocumento doc1 = new TipoDocumento(1L, "DNI", "DNI", true);
-        TipoDocumento doc2 = new TipoDocumento(2L, "Pasaporte", "PAS", true);
 
-        when(tipoDocumentoService.obtenerTiposDocumento(null, null))
-                .thenReturn(List.of(doc1, doc2));
-
-        mockMvc.perform(get("/api/tipo-documento"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].nombre").value("DNI"));
+    @BeforeEach
+    void setup() {
+        // Resetear el mock antes de cada test para asegurar la independencia
+        Mockito.reset(tipoDocumentoService);
     }
 
     @Test
-    void testObtenerTiposDocumentoConFiltros() throws Exception {
-        TipoDocumento doc = new TipoDocumento(3L, "Cédula", "CED", true);
+    void testObtenerTiposDocumentoPaginadoPorDefecto() throws Exception {
+        TipoDocumento doc1 = new TipoDocumento(1L, "Carnet de extranjería", "CARNET EXT.", true);
+        TipoDocumento doc2 = new TipoDocumento(2L, "Documento Nacional de Identidad", "DNI", true);
+        TipoDocumento doc3 = new TipoDocumento(3L, "Pasaporte", "PASAPORTE", true);
 
-        when(tipoDocumentoService.obtenerTiposDocumento("Cédula", "CED"))
-                .thenReturn(List.of(doc));
+        List<TipoDocumento> docs = List.of(doc1, doc2, doc3);
+
+        Pageable defaultPageable = PageRequest.of(0, 10, Sort.by("nombre").ascending());
+
+        Page<TipoDocumento> page = new PageImpl<>(docs, defaultPageable, docs.size());
+
+        when(tipoDocumentoService.obtenerTiposDocumentoPaginados(eq(null), eq(null), eq(defaultPageable)))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/tipo-documento"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[0].nombre").value("Carnet de extranjería"))
+                .andExpect(jsonPath("$.content[1].nombre").value("Documento Nacional de Identidad"))
+                .andExpect(jsonPath("$.content[2].nombre").value("Pasaporte"))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1));
+
+        verify(tipoDocumentoService, times(1)).obtenerTiposDocumentoPaginados(eq(null), eq(null), eq(defaultPageable));
+        verify(tipoDocumentoService, never()).obtenerTiposDocumento(any(), any());
+    }
+
+    @Test
+    void testObtenerTiposDocumentoPaginadoConFiltros() throws Exception {
+        TipoDocumento doc = new TipoDocumento(3L, "Cédula de Identidad", "CED", true);
+
+        List<TipoDocumento> docs = List.of(doc);
+        Pageable pageableWithFilters = PageRequest.of(0, 10, Sort.by("nombre").ascending());
+
+        Page<TipoDocumento> page = new PageImpl<>(docs, pageableWithFilters, docs.size());
+
+        when(tipoDocumentoService.obtenerTiposDocumentoPaginados(eq("Cédula"), eq("CED"), eq(pageableWithFilters)))
+                .thenReturn(page);
 
         mockMvc.perform(get("/api/tipo-documento")
                         .param("nombre", "Cédula")
                         .param("acronimo", "CED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].acronimo").value("CED"));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].nombre").value("Cédula de Identidad"))
+                .andExpect(jsonPath("$.content[0].acronimo").value("CED"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.size").value(10));
+
+
+        verify(tipoDocumentoService, times(1)).obtenerTiposDocumentoPaginados(eq("Cédula"), eq("CED"), eq(pageableWithFilters));
+        verify(tipoDocumentoService, never()).obtenerTiposDocumento(any(), any());
+    }
+
+    @Test
+    void testObtenerTiposDocumentoPaginadoVacioPorPagina() throws Exception {
+        List<TipoDocumento> allDocs = List.of(
+                new TipoDocumento(1L, "DocA", "A", true),
+                new TipoDocumento(2L, "DocB", "B", true),
+                new TipoDocumento(3L, "DocC", "C", true)
+        );
+        Pageable requestedPageable = PageRequest.of(1, 2, Sort.by("nombre").ascending());
+
+        Page<TipoDocumento> emptyPage = new PageImpl<>(Collections.emptyList(), requestedPageable, allDocs.size());
+
+        when(tipoDocumentoService.obtenerTiposDocumentoPaginados(eq(null), eq(null), eq(requestedPageable)))
+                .thenReturn(emptyPage);
+
+        mockMvc.perform(get("/api/tipo-documento")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0))
+                .andExpect(jsonPath("$.number").value(1))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        verify(tipoDocumentoService, times(1)).obtenerTiposDocumentoPaginados(eq(null), eq(null), eq(requestedPageable));
+    }
+
+
+    @Test
+    void testObtenerTiposDocumentoAllTrue() throws Exception {
+        TipoDocumento doc1 = new TipoDocumento(1L, "DNI", "DNI", true);
+        TipoDocumento doc2 = new TipoDocumento(2L, "Pasaporte", "PAS", true);
+
+        when(tipoDocumentoService.obtenerTiposDocumento(eq(null), eq(null)))
+                .thenReturn(List.of(doc1, doc2));
+
+        mockMvc.perform(get("/api/tipo-documento")
+                        .param("all", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].nombre").value("DNI"));
+
+        verify(tipoDocumentoService, times(1)).obtenerTiposDocumento(eq(null), eq(null));
+        verify(tipoDocumentoService, never()).obtenerTiposDocumentoPaginados(any(), any(), any());
     }
 
     @Test

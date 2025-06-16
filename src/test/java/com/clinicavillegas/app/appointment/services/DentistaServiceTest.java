@@ -2,6 +2,7 @@ package com.clinicavillegas.app.appointment.services;
 
 import com.clinicavillegas.app.appointment.dto.request.DentistaRequest;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
+import com.clinicavillegas.app.appointment.mappers.DentistaMapper; // Podría ser útil si usas el mapper directamente en el test para crear respuestas esperadas.
 import com.clinicavillegas.app.appointment.models.Dentista;
 import com.clinicavillegas.app.appointment.models.Dia;
 import com.clinicavillegas.app.appointment.models.Horario;
@@ -18,12 +19,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page; // ¡Nuevo! Importar Page
+import org.springframework.data.domain.PageImpl; // ¡Nuevo! Importar PageImpl
+import org.springframework.data.domain.PageRequest; // ¡Nuevo! Importar PageRequest
+import org.springframework.data.domain.Pageable; // ¡Nuevo! Importar Pageable
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.NoSuchElementException; // Mantener si otras partes del código aún pueden lanzarla, aunque ResourceNotFoundException es más específica.
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,7 +47,6 @@ class DentistaServiceTest {
     private HorarioRepository horarioRepository;
 
 
-
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -50,7 +54,7 @@ class DentistaServiceTest {
     }
 
     @Test
-    @DisplayName("Debe obtener todos los dentistas")
+    @DisplayName("Debe obtener todos los dentistas (sin filtros, método obsoleto si solo se usa el paginado)")
     void testObtenerTodosLosDentistas() {
         Dentista dentista1 = Dentista.builder()
                 .id(1L)
@@ -66,9 +70,12 @@ class DentistaServiceTest {
                 .estado(true)
                 .build();
 
+        // Si el método obtenerDentistas() sin parámetros ya no existe o llama al paginado
+        // este test podría necesitar ajustarse para reflejar el cambio en la firma.
+        // Asumiendo que obtenerDentistas() sin parámetros *llama* a findAll(), este es correcto.
         when(dentistaRepository.findAll()).thenReturn(List.of(dentista1, dentista2));
 
-        List<Dentista> dentistas = dentistaService.obtenerDentistas();
+        List<Dentista> dentistas = dentistaService.obtenerDentistas(); // Este test es para el método que devuelve List<Dentista>
 
         assertNotNull(dentistas);
         assertEquals(2, dentistas.size());
@@ -98,17 +105,14 @@ class DentistaServiceTest {
     @Test
     @DisplayName("Debe lanzar ResourceNotFoundException si no encuentra el dentista por ID")
     void testDentistaNoEncontrado() {
-        // Simulamos que no hay un dentista con el ID dado (Optional vacío)
         when(dentistaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Verificamos que se lanza la excepción ResourceNotFoundException
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
             dentistaService.obtenerDentista(1L);
         });
 
         assertEquals("Recurso del tipo 'com.clinicavillegas.app.appointment.models.Dentista' con ID '1' no fue encontrado", exception.getMessage());
 
-        // Verificamos que se llamó a findById exactamente una vez
         verify(dentistaRepository, times(1)).findById(1L);
     }
 
@@ -131,39 +135,36 @@ class DentistaServiceTest {
 
         when(usuarioRepository.findById(1L)).thenReturn(Optional.of(usuario));
         when(dentistaRepository.save(any(Dentista.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0)); // Mockear el save del usuario
 
         assertDoesNotThrow(() -> dentistaService.agregarDentista(request));
+        verify(usuarioRepository, times(1)).save(any(Usuario.class)); // Verificar que se guardó el usuario
         verify(dentistaRepository, times(1)).save(any(Dentista.class));
     }
 
     @Test
     @DisplayName("Debe lanzar excepción al agregar un dentista con usuario inexistente")
     void testAgregarDentistaUsuarioNoEncontrado() {
-        // Configuración del request
         DentistaRequest request = DentistaRequest.builder()
                 .nColegiatura("12345")
                 .especializacion("Ortodoncia")
                 .usuarioId(1L)
                 .build();
 
-        // Simulamos que no se encuentra el usuario
         when(usuarioRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Verificamos que se lance NoSuchElementException
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> dentistaService.agregarDentista(request));
 
-        // Opcional: verificar mensaje de la excepción si es necesario.
         assertEquals("Recurso del tipo 'com.clinicavillegas.app.user.models.Usuario' con ID '1' no fue encontrado", exception.getMessage());
 
-        // Verificar interacciones del mock
         verify(usuarioRepository, times(1)).findById(1L);
+        verify(usuarioRepository, never()).save(any(Usuario.class)); // Verificar que no se guardó el usuario
         verify(dentistaRepository, never()).save(any(Dentista.class));
     }
 
     @Test
     @DisplayName("Debe eliminar un dentista correctamente")
     void testEliminarDentista() {
-        // Configuración del objeto Usuario asociado al dentista
         Usuario usuario = Usuario.builder()
                 .id(1L)
                 .nombres("Juan")
@@ -172,7 +173,6 @@ class DentistaServiceTest {
                 .rol(Rol.DENTISTA)
                 .build();
 
-        // Configuración del dentista con un usuario asociado
         Dentista dentista = Dentista.builder()
                 .id(1L)
                 .nColegiatura("12345")
@@ -181,7 +181,6 @@ class DentistaServiceTest {
                 .usuario(usuario)
                 .build();
 
-        // Configuración de horarios asociados al dentista
         List<Horario> horarios = List.of(
                 Horario.builder()
                         .id(1L)
@@ -192,61 +191,50 @@ class DentistaServiceTest {
                         .build()
         );
 
-        // Configuración del mock del repositorio de dentistas
         when(dentistaRepository.findById(1L)).thenReturn(Optional.of(dentista));
-
-        // Configuración del mock del repositorio de horarios
         when(horarioRepository.findByDentista(dentista)).thenReturn(horarios);
 
-        // Llamada al método a probar
         dentistaService.eliminarDentista(1L);
 
-        // Verificaciones
-        verify(horarioRepository, times(1)).findByDentista(dentista);    // Verifica que se consultaron los horarios
-        verify(horarioRepository, times(horarios.size())).delete(any(Horario.class)); // Verifica que se eliminaron todos los horarios
-        verify(usuarioRepository, times(1)).save(usuario); // Verifica que se actualizó el rol del usuario
-        verify(dentistaRepository, times(1)).delete(dentista); // Verifica que se eliminó el dentista
+        verify(horarioRepository, times(1)).findByDentista(dentista);
+        verify(horarioRepository, times(horarios.size())).delete(any(Horario.class));
+        verify(usuarioRepository, times(1)).save(usuario);
+        assertEquals(Rol.PACIENTE, usuario.getRol()); // Asegurarse de que el rol se actualizó en el objeto
+        verify(dentistaRepository, times(1)).delete(dentista);
     }
+
     @Test
     @DisplayName("Debe lanzar excepción al intentar eliminar un dentista inexistente")
     void testEliminarDentistaNoEncontrado() {
-        // Configuramos el mock para devolver un Optional vacío
         when(dentistaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // Verificamos que la excepción lanzada sea del tipo NoSuchElementException
         ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> dentistaService.eliminarDentista(1L));
 
-        // Validamos que el mensaje de la excepción sea el esperado (si aplica lógica específica)
         assertEquals("Recurso del tipo 'com.clinicavillegas.app.appointment.models.Dentista' con ID '1' no fue encontrado", exception.getMessage());
 
-        // Verificamos que se llamó findById en dentistaRepository
         verify(dentistaRepository, times(1)).findById(1L);
-
-        // Verificamos que nunca se intentó eliminar un dentista
         verify(dentistaRepository, never()).delete(any(Dentista.class));
     }
+
     @Test
     @DisplayName("Debe actualizar un dentista correctamente")
     void testActualizarDentista() {
-        // Configuración del usuario anterior asociado al dentista original
         Usuario usuarioAnterior = Usuario.builder()
                 .id(1L)
                 .nombres("Pedro")
                 .apellidoPaterno("Perez")
                 .apellidoMaterno("Ramirez")
-                .rol(Rol.DENTISTA) // Rol inicial
+                .rol(Rol.DENTISTA)
                 .build();
 
-        // Configuración del usuario nuevo a asociar al dentista
         Usuario usuarioActual = Usuario.builder()
                 .id(20L)
                 .nombres("Juan")
                 .apellidoPaterno("Gomez")
                 .apellidoMaterno("Lopez")
-                .rol(Rol.PACIENTE) // Rol del nuevo usuario
+                .rol(Rol.PACIENTE) // Este rol se cambia a DENTISTA en el servicio
                 .build();
 
-        // Configuración del dentista original
         Dentista dentista = Dentista.builder()
                 .id(1L)
                 .nColegiatura("NC12345")
@@ -255,39 +243,36 @@ class DentistaServiceTest {
                 .usuario(usuarioAnterior)
                 .build();
 
-        // Configuración del request para actualizar el dentista
         DentistaRequest request = DentistaRequest.builder()
                 .nColegiatura("NC54321")
                 .especializacion("Cirugía Maxilofacial")
                 .usuarioId(usuarioActual.getId())
                 .build();
 
-        // Mock del repositorio de dentistas: encontrar dentista por ID
         when(dentistaRepository.findById(1L)).thenReturn(Optional.of(dentista));
-
-        // Mock del repositorio de usuarios: encontrar el nuevo usuario por ID
         when(usuarioRepository.findById(20L)).thenReturn(Optional.of(usuarioActual));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0)); // Mockear el save de usuario
+        when(dentistaRepository.save(any(Dentista.class))).thenAnswer(invocation -> invocation.getArgument(0)); // Mockear el save de dentista
 
-        // Llamada al método a probar
         dentistaService.actualizarDentista(1L, request);
 
-        // Verificaciones: Cambios en el usuario anterior (rol cambia a PACIENTE)
-        verify(usuarioRepository, times(1)).save(usuarioAnterior);
+        verify(usuarioRepository, times(1)).save(usuarioAnterior); // Guarda el usuario anterior con rol PACIENTE
         assertEquals(Rol.PACIENTE, usuarioAnterior.getRol());
 
-        // Verificaciones: Configuración del usuario actual asociado al dentista
-        verify(usuarioRepository, times(1)).findById(20L);
+        verify(usuarioRepository, times(1)).findById(20L); // Busca el nuevo usuario
+        verify(usuarioRepository, times(1)).save(usuarioActual); // Guarda el nuevo usuario con rol DENTISTA
+        assertEquals(Rol.DENTISTA, usuarioActual.getRol()); // Asegurarse de que el rol del nuevo usuario se actualizó
+
         assertEquals(usuarioActual, dentista.getUsuario());
         assertEquals("NC54321", dentista.getNColegiatura());
         assertEquals("Cirugía Maxilofacial", dentista.getEspecializacion());
 
-        // Verificación: Guardar el dentista actualizado
         verify(dentistaRepository, times(1)).save(dentista);
     }
+
     @Test
-    @DisplayName("Debe obtener una lista de dentistas filtrados correctamente")
+    @DisplayName("Debe obtener una lista de dentistas filtrados correctamente (sin paginación)")
     void testObtenerDentistasFiltrados() {
-        // Configuración del usuario con fechaNacimiento válida
         Usuario usuario = Usuario.builder()
                 .id(10L)
                 .nombres("Carlos")
@@ -295,11 +280,10 @@ class DentistaServiceTest {
                 .apellidoMaterno("Fernández")
                 .correo("carlos.gomez@mail.com")
                 .telefono("999888777")
-                .sexo(Sexo.valueOf("MASCULINO"))
-                .fechaNacimiento(LocalDate.of(1990, 7, 15)) // Fecha válida
+                .sexo(Sexo.MASCULINO) // Usar el enum directamente
+                .fechaNacimiento(LocalDate.of(1990, 7, 15))
                 .build();
 
-        // Configuración del dentista
         Dentista dentista = Dentista.builder()
                 .id(1L)
                 .nColegiatura("NC12345")
@@ -308,17 +292,14 @@ class DentistaServiceTest {
                 .usuario(usuario)
                 .build();
 
-        // Mock del repositorio: devolver una lista de dentistas
         when(dentistaRepository.findAll(any(Specification.class))).thenReturn(List.of(dentista));
 
-        // Llamada al método
+        // Este test sigue siendo válido para el método List<DentistaResponse> obtenerDentistas(String, String, Long)
         List<DentistaResponse> dentistas = dentistaService.obtenerDentistas("Carlos", "Ortodoncia", 10L);
 
-        // Verificaciones: Validar los resultados
         assertNotNull(dentistas);
         assertEquals(1, dentistas.size());
 
-        // Validar la primera respuesta
         DentistaResponse response = dentistas.get(0);
         assertEquals(1L, response.getId());
         assertEquals("NC12345", response.getNColegiatura());
@@ -330,33 +311,86 @@ class DentistaServiceTest {
         assertEquals(10L, response.getUsuarioId());
         assertEquals("carlos.gomez@mail.com", response.getCorreo());
         assertEquals("999888777", response.getTelefono());
-        assertEquals("MASCULINO", response.getSexo());
-        assertEquals("1990-07-15", response.getFechaNacimiento()); // Verifica el valor de fechaNacimiento
+        assertEquals(Sexo.MASCULINO.name(), response.getSexo()); // Asegurarse de que el enum se compara con su nombre
+        assertEquals("1990-07-15", response.getFechaNacimiento().toString());
 
-        // Verificar interacciones
         verify(dentistaRepository, times(1)).findAll(any(Specification.class));
+    }
+
+    @Test
+    @DisplayName("Debe obtener una página de dentistas filtrados y paginados correctamente")
+    void testObtenerDentistasPaginados() {
+        // 1. Datos de prueba
+        Usuario usuario = Usuario.builder()
+                .id(10L)
+                .nombres("Carlos")
+                .apellidoPaterno("Gómez")
+                .apellidoMaterno("Fernández")
+                .correo("carlos.gomez@mail.com")
+                .telefono("999888777")
+                .sexo(Sexo.MASCULINO)
+                .fechaNacimiento(LocalDate.of(1990, 7, 15))
+                .build();
+
+        Dentista dentista = Dentista.builder()
+                .id(1L)
+                .nColegiatura("NC12345")
+                .estado(true)
+                .especializacion("Ortodoncia")
+                .usuario(usuario)
+                .build();
+
+        // 2. Crear el DentistaResponse esperado (usando el mapper si es necesario)
+        // En un test unitario del servicio, es mejor crear el DTO directamente para controlar la conversión
+        DentistaResponse dentistaResponse = DentistaMapper.toDto(dentista);
+
+        // 3. Configurar el objeto Pageable para la llamada
+        Pageable pageable = PageRequest.of(0, 10); // Página 0, tamaño 10
+
+        // 4. Crear un PageImpl con los datos simulados
+        Page<Dentista> mockDentistaPage = new PageImpl<>(List.of(dentista), pageable, 1); // Total de elementos: 1
+
+        // 5. Mockear el comportamiento del repositorio
+        // Ahora findAll espera una Specification Y un Pageable
+        when(dentistaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(mockDentistaPage);
+
+        // 6. Llamar al método del servicio a probar
+        Page<DentistaResponse> resultadoPage = dentistaService.obtenerDentistasPaginados(
+                "Carlos", "Ortodoncia", 10L, pageable);
+
+        // 7. Aserciones
+        assertNotNull(resultadoPage);
+        assertEquals(1, resultadoPage.getTotalElements()); // Total de elementos
+        assertEquals(1, resultadoPage.getContent().size()); // Elementos en la página actual
+        assertEquals(0, resultadoPage.getNumber()); // Número de página
+        assertEquals(10, resultadoPage.getSize()); // Tamaño de página
+
+        DentistaResponse resultadoDentista = resultadoPage.getContent().get(0);
+        assertEquals(dentistaResponse.getId(), resultadoDentista.getId());
+        assertEquals(dentistaResponse.getNombres(), resultadoDentista.getNombres());
+        assertEquals(dentistaResponse.getEspecializacion(), resultadoDentista.getEspecializacion());
+        // Puedes añadir más aserciones para verificar que el DTO se mapeó correctamente
+
+        // 8. Verificar interacciones del mock
+        verify(dentistaRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Debe obtener una lista de especialidades de dentistas")
     void testObtenerEspecialidades() {
-        // Lista de especialidades simuladas
         List<String> especialidadesMock = List.of("Ortodoncia", "Endodoncia", "Cirugía Maxilofacial");
 
-        // Configurar el mock para el repositorio
         when(dentistaRepository.findEspecializaciones()).thenReturn(especialidadesMock);
 
-        // Llamada al método a probar
         List<String> especialidades = dentistaService.obtenerEspecialidades();
 
-        // Validaciones
         assertNotNull(especialidades);
         assertEquals(3, especialidades.size());
         assertEquals("Ortodoncia", especialidades.get(0));
         assertEquals("Endodoncia", especialidades.get(1));
         assertEquals("Cirugía Maxilofacial", especialidades.get(2));
 
-        // Verificar que el método del repositorio fue invocado
         verify(dentistaRepository, times(1)).findEspecializaciones();
     }
 }

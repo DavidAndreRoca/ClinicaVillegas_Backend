@@ -13,9 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page; // Importar Page
+import org.springframework.data.domain.Pageable; // Importar Pageable
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors; // Importar Collectors, si aún no lo tienes
 
 @Service
 @Slf4j
@@ -32,17 +35,30 @@ public class DefaultComentarioService implements ComentarioService {
         this.usuarioRepository = usuarioRepository;
     }
 
-    @Cacheable(value = CACHE_COMENTARIOS_PADRE, key = "'allRootComments'")
-    public List<ComentarioResponse> obtenerComentarios() {
-        log.info("Obteniendo comentarios padre de la base de datos.");
-        List<Comentario> comentarios = comentarioRepository.findByComentario(null);
-        return comentarios.stream().map(ComentarioMapper::toDto).toList();
+    // Modificación principal aquí:
+    // 1. Quité el @Cacheable por la complejidad de cachear páginas.
+    //    Si realmente necesitas cachear, la clave del caché debe incluir los parámetros de pageable.
+    // 2. Cambié el tipo de retorno a Page<ComentarioResponse>.
+    // 3. Añadí Pageable pageable como parámetro.
+    @Override // Asegúrate de que tu interfaz ComentarioService también fue actualizada para coincidir con esta firma.
+    public Page<ComentarioResponse> obtenerComentarios(Pageable pageable) {
+        log.info("Obteniendo comentarios padre paginados de la base de datos con Pageable: {}", pageable);
+
+        // Aquí usamos el nuevo método del repositorio que devuelve un Page
+        // Si no creaste findByComentarioIsNull, puedes usar comentarioRepository.findAll(pageable)
+        // si solo quieres los comentarios raíz (los que no tienen padre).
+        // Sin embargo, findByComentarioIsNull(pageable) es más específico.
+        Page<Comentario> comentariosPage = comentarioRepository.findByComentarioIsNull(pageable);
+
+        // Mapeamos el Page<Comentario> a Page<ComentarioResponse>
+        return comentariosPage.map(comentario -> ComentarioMapper.toDto(comentario, obtenerRespuestas(comentario.getId())));
     }
 
     @Caching(evict = {
-            @CacheEvict(value = CACHE_COMENTARIOS_PADRE, allEntries = true),
+            @CacheEvict(value = CACHE_COMENTARIOS_PADRE, allEntries = true), // Considera cómo esto impacta la paginación.
             @CacheEvict(value = CACHE_RESPUESTAS_COMENTARIO, key = "#request.comentarioId", condition = "#request.comentarioId != null")
     })
+    @Override // Agregué el @Override para asegurar que coincida con la interfaz.
     public void agregarComentario(ComentarioRequest request) {
         log.info("Agregando nuevo comentario: {}", request);
         Usuario usuario = usuarioRepository.findById(request.getUsuarioId()).orElseThrow(
@@ -62,12 +78,13 @@ public class DefaultComentarioService implements ComentarioService {
     }
 
     @Cacheable(value = CACHE_RESPUESTAS_COMENTARIO, key = "#comentarioId")
+    @Override // Agregué el @Override para asegurar que coincida con la interfaz.
     public List<ComentarioResponse> obtenerRespuestas(Long comentarioId) {
         log.info("Obteniendo respuestas para el comentario ID: {} de la base de datos.", comentarioId);
         Comentario comentario = comentarioRepository.findById(comentarioId).orElseThrow(
                 () -> new ResourceNotFoundException(Comentario.class, comentarioId)
         );
         List<Comentario> comentarios = comentarioRepository.findByComentario(comentario);
-        return comentarios.stream().map(ComentarioMapper::toDto).toList();
+        return comentarios.stream().map(ComentarioMapper::toDto).collect(Collectors.toList());
     }
 }

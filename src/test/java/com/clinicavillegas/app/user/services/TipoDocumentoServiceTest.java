@@ -13,6 +13,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page; // Importar Page
+import org.springframework.data.domain.PageImpl; // Importar PageImpl
+import org.springframework.data.domain.PageRequest; // Importar PageRequest
+import org.springframework.data.domain.Pageable; // Importar Pageable
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Arrays;
@@ -21,6 +25,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq; // Necesario para eq(null) o eq("someString")
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,7 +76,7 @@ public class TipoDocumentoServiceTest {
     }
 
     @Test
-    @DisplayName("Debe obtener tipos de documento por nombre y acrónimo")
+    @DisplayName("Debe obtener tipos de documento por nombre y acrónimo (sin paginación)")
     void testObtenerTiposDocumentoPorNombreYAcronimo() {
         // Arrange
         String nombre = "DNI";
@@ -88,6 +93,70 @@ public class TipoDocumentoServiceTest {
         assertEquals("DNI", result.get(0).getNombre());
         verify(tipoDocumentoRepository, times(1)).findAll(any(Specification.class));
     }
+
+    // --- Nuevos Tests para la Paginación ---
+
+    @Test
+    @DisplayName("Debe obtener tipos de documento paginados por defecto")
+    void testObtenerTiposDocumentoPaginadosPorDefecto() {
+        // Arrange
+        // Creamos una lista de documentos que simule la respuesta de la DB
+        List<TipoDocumento> docs = Arrays.asList(tipoDocumento1, tipoDocumento2);
+        // Creamos un objeto Pageable para simular la solicitud de paginación por defecto
+        Pageable pageable = PageRequest.of(0, 10);
+        // Creamos un objeto Page que el repositorio debería devolver
+        Page<TipoDocumento> expectedPage = new PageImpl<>(docs, pageable, docs.size());
+
+        // Configuramos el mock para que devuelva la página esperada
+        // Usamos eq(null) para los parámetros opcionales que no se pasan
+        when(tipoDocumentoRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(expectedPage);
+
+        // Act
+        Page<TipoDocumento> result = tipoDocumentoService.obtenerTiposDocumentoPaginados(null, null, pageable);
+
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertEquals(2, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
+        assertEquals(tipoDocumento1.getNombre(), result.getContent().get(0).getNombre());
+        assertEquals(tipoDocumento2.getNombre(), result.getContent().get(1).getNombre());
+
+        // Verificamos que el método findAll del repositorio con Specification y Pageable fue llamado
+        verify(tipoDocumentoRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("Debe obtener tipos de documento paginados con filtros")
+    void testObtenerTiposDocumentoPaginadosConFiltros() {
+        // Arrange
+        String nombre = "DNI";
+        String acronimo = "DNI";
+        List<TipoDocumento> docs = Arrays.asList(tipoDocumento1); // Solo DNI debe coincidir
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<TipoDocumento> expectedPage = new PageImpl<>(docs, pageable, docs.size());
+
+        // Configuramos el mock para que devuelva la página esperada cuando los filtros coincidan
+        when(tipoDocumentoRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(expectedPage);
+
+        // Act
+        Page<TipoDocumento> result = tipoDocumentoService.obtenerTiposDocumentoPaginados(nombre, acronimo, pageable);
+
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
+        assertEquals(tipoDocumento1.getNombre(), result.getContent().get(0).getNombre());
+        assertEquals(tipoDocumento1.getAcronimo(), result.getContent().get(0).getAcronimo());
+
+        // Verificamos que el método findAll del repositorio fue llamado con la especificación y pageable
+        verify(tipoDocumentoRepository, times(1)).findAll(any(Specification.class), eq(pageable));
+    }
+
+    // --- Tests Originales (sin cambios necesarios) ---
 
     @Test
     @DisplayName("Debe actualizar un tipo de documento existente")

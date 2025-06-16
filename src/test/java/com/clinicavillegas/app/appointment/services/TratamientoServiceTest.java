@@ -11,6 +11,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -38,8 +42,8 @@ public class TratamientoServiceTest {
     }
 
     @Test
-    @DisplayName("Debe obtener todos los tratamientos")
-    void testObtenerTodosTratamientos() {
+    @DisplayName("Debe obtener tratamientos paginados (activos por defecto) cuando no se especifican filtros")
+    void testObtenerTratamientosPaginadosSinFiltros() {
         Tratamiento tratamiento1 = Tratamiento.builder()
                 .id(1L)
                 .nombre("Limpieza")
@@ -52,30 +56,139 @@ public class TratamientoServiceTest {
                 .estado(true)
                 .build();
 
-        when(tratamientoRepository.findAll()).thenReturn(List.of(tratamiento1, tratamiento2));
+        when(tratamientoRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(tratamiento1, tratamiento2)));
 
-        List<Tratamiento> resultados = tratamientoService.obtenerTratamientos();
+        // Ahora llama al nuevo método obtenerTratamientosPaginados
+        Page<Tratamiento> resultadosPage = tratamientoService.obtenerTratamientosPaginados(null, null, null, PageRequest.of(0, 10));
 
-        assertEquals(2, resultados.size());
-        verify(tratamientoRepository, times(1)).findAll();
+        assertEquals(2, resultadosPage.getContent().size());
+        assertTrue(resultadosPage.getContent().contains(tratamiento1));
+        assertTrue(resultadosPage.getContent().contains(tratamiento2));
+        verify(tratamientoRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
     }
 
+
     @Test
-    @DisplayName("Debe obtener tratamientos filtrados por tipo y nombre")
-    void testObtenerTratamientosFiltrados() {
+    @DisplayName("Debe obtener tratamientos paginados filtrados por tipo, nombre y estado")
+    void testObtenerTratamientosPaginadosFiltrados() {
         Tratamiento tratamiento = Tratamiento.builder()
                 .id(1L)
                 .nombre("Ortodoncia")
                 .estado(true)
                 .build();
 
+        when(tratamientoRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(tratamiento)));
+
+        // Ahora llama al nuevo método obtenerTratamientosPaginados
+        Page<Tratamiento> resultadosPage = tratamientoService.obtenerTratamientosPaginados(1L, "Ortodoncia", true, PageRequest.of(0, 10));
+
+        assertEquals(1, resultadosPage.getContent().size());
+        assertEquals("Ortodoncia", resultadosPage.getContent().getFirst().getNombre());
+        assertTrue(resultadosPage.getContent().getFirst().isEstado());
+        verify(tratamientoRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Debe obtener tratamientos paginados filtrados por estado inactivo")
+    void testObtenerTratamientosPaginadosFiltradosPorEstadoInactivo() {
+        Tratamiento tratamientoInactivo = Tratamiento.builder()
+                .id(2L)
+                .nombre("Revisión Anual")
+                .estado(false)
+                .build();
+
+        when(tratamientoRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(tratamientoInactivo)));
+
+        // Ahora llama al nuevo método obtenerTratamientosPaginados
+        Page<Tratamiento> resultadosPage = tratamientoService.obtenerTratamientosPaginados(null, null, false, PageRequest.of(0, 10));
+
+        assertEquals(1, resultadosPage.getContent().size());
+        assertEquals("Revisión Anual", resultadosPage.getContent().getFirst().getNombre());
+        assertFalse(resultadosPage.getContent().getFirst().isEstado());
+        verify(tratamientoRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Debe obtener todos los tratamientos (sin paginar) cuando no se especifican filtros")
+    void testObtenerTodosTratamientosSinPaginar() {
+        Tratamiento tratamiento1 = Tratamiento.builder()
+                .id(1L)
+                .nombre("Limpieza")
+                .estado(true)
+                .build();
+
+        Tratamiento tratamiento2 = Tratamiento.builder()
+                .id(2L)
+                .nombre("Blanqueamiento Inactivo")
+                .estado(false)
+                .build();
+
+        Tratamiento tratamiento3 = Tratamiento.builder()
+                .id(3L)
+                .nombre("Consulta")
+                .estado(true)
+                .build();
+
+        // Mock para el método findAll(Specification) que devuelve una List
+        when(tratamientoRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(tratamiento1, tratamiento2, tratamiento3));
+
+        // Llama al nuevo método obtenerTodosTratamientos
+        List<Tratamiento> resultados = tratamientoService.obtenerTodosTratamientos(null, null, null);
+
+        assertEquals(3, resultados.size());
+        assertTrue(resultados.contains(tratamiento1));
+        assertTrue(resultados.contains(tratamiento2)); // Debe incluir inactivos si no se filtra por estado
+        assertTrue(resultados.contains(tratamiento3));
+        verify(tratamientoRepository, times(1)).findAll(any(Specification.class));
+        verify(tratamientoRepository, never()).findAll(any(Specification.class), any(Pageable.class)); // Asegura que no se llamó al paginado
+    }
+
+    @Test
+    @DisplayName("Debe obtener todos los tratamientos filtrados por tipo y nombre (sin paginar)")
+    void testObtenerTodosTratamientosFiltradosSinPaginar() {
+        Tratamiento tratamiento = Tratamiento.builder()
+                .id(1L)
+                .nombre("Blanqueamiento Láser")
+                .estado(true)
+                .build();
+
+        // Mock para el método findAll(Specification)
         when(tratamientoRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(tratamiento));
 
-        List<Tratamiento> resultados = tratamientoService.obtenerTratamientos(1L, "Ortodoncia");
+        // Llama al nuevo método obtenerTodosTratamientos
+        List<Tratamiento> resultados = tratamientoService.obtenerTodosTratamientos(5L, "Blanqueamiento", null);
 
         assertEquals(1, resultados.size());
-        assertEquals("Ortodoncia", resultados.getFirst().getNombre());
+        assertEquals("Blanqueamiento Láser", resultados.getFirst().getNombre());
+        assertTrue(resultados.getFirst().isEstado());
+        verify(tratamientoRepository, times(1)).findAll(any(Specification.class));
+    }
+
+    @Test
+    @DisplayName("Debe obtener todos los tratamientos filtrados por estado inactivo (sin paginar)")
+    void testObtenerTodosTratamientosFiltradosPorEstadoInactivoSinPaginar() {
+        Tratamiento tratamientoInactivo = Tratamiento.builder()
+                .id(2L)
+                .nombre("Revisión Dental Caducada")
+                .estado(false)
+                .build();
+
+        // Mock para el método findAll(Specification)
+        when(tratamientoRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(tratamientoInactivo));
+
+        // Llama al nuevo método obtenerTodosTratamientos
+        List<Tratamiento> resultados = tratamientoService.obtenerTodosTratamientos(null, null, false);
+
+        assertEquals(1, resultados.size());
+        assertEquals("Revisión Dental Caducada", resultados.getFirst().getNombre());
+        assertFalse(resultados.getFirst().isEstado());
+        verify(tratamientoRepository, times(1)).findAll(any(Specification.class));
     }
 
     @Test

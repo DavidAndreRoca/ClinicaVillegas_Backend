@@ -13,7 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page; // Importar Page
+import org.springframework.data.domain.PageImpl; // Importar PageImpl
+import org.springframework.data.domain.PageRequest; // Importar PageRequest (útil para el Pageable)
+import org.springframework.data.domain.Pageable; // Importar Pageable
 
+
+import java.time.LocalDateTime; // Asegúrate de tener este import si usas LocalDateTime.now() en tus mocks
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -45,26 +51,46 @@ public class ComentarioServiceTest {
         usuarioMock.setId(1L);
         usuarioMock.setNombres("Juan");
         usuarioMock.setApellidoPaterno("Pérez");
+        usuarioMock.setCorreo("juan@example.com"); // Asegúrate de que el DTO mapea estos campos
+        usuarioMock.setImagenPerfil("juan.jpg");
 
         comentarioMock = new Comentario();
         comentarioMock.setId(1L);
         comentarioMock.setContenido("Comentario de prueba");
-        comentarioMock.setUsuario(usuarioMock);
+        comentarioMock.setUsuario(usuarioMock);// Importante para el DTO
     }
 
     @Test
-    @DisplayName("Debe obtener todos los comentarios principales")
+    @DisplayName("Debe obtener todos los comentarios principales paginados")
     void testObtenerComentarios() {
-        // Configurar mock con usuario
-        when(comentarioRepository.findByComentario(null))
-                .thenReturn(Collections.singletonList(comentarioMock));
+        List<Comentario> mockComentariosEntidad = List.of(comentarioMock);
 
-        List<ComentarioResponse> resultados = comentarioService.obtenerComentarios();
+        Page<Comentario> comentariosPageEntidadMock = new PageImpl<>(mockComentariosEntidad, PageRequest.of(0, 10), mockComentariosEntidad.size());
 
-        assertEquals(1, resultados.size());
-        assertEquals("Comentario de prueba", resultados.getFirst().getContenido());
-        assertNotNull(resultados.getFirst().getId()); // Verificar que el usuario no es null
+        when(comentarioRepository.findByComentarioIsNull(any(Pageable.class)))
+                .thenReturn(comentariosPageEntidadMock);
+
+        when(comentarioRepository.findById(1L)).thenReturn(Optional.of(comentarioMock));
+        when(comentarioRepository.findByComentario(comentarioMock)).thenReturn(Collections.emptyList());
+
+        Page<ComentarioResponse> resultados = comentarioService.obtenerComentarios(PageRequest.of(0, 10));
+
+        assertNotNull(resultados);
+        assertEquals(1, resultados.getContent().size());
+        assertEquals("Comentario de prueba", resultados.getContent().getFirst().getContenido());
+        assertNotNull(resultados.getContent().getFirst().getId());
+        assertEquals("Juan Pérez", resultados.getContent().getFirst().getNombresUsuario());
+
+        assertEquals(0, resultados.getNumber());
+        assertEquals(10, resultados.getSize());
+        assertEquals(1, resultados.getTotalElements());
+        assertEquals(1, resultados.getTotalPages());
+
+        verify(comentarioRepository).findByComentarioIsNull(any(Pageable.class));
+        verify(comentarioRepository, times(1)).findById(1L);
+        verify(comentarioRepository, times(1)).findByComentario(comentarioMock);
     }
+
 
     @Test
     @DisplayName("Debe agregar un comentario nuevo")
@@ -92,7 +118,7 @@ public class ComentarioServiceTest {
         respuesta.setId(2L);
         respuesta.setContenido("Respuesta");
         respuesta.setComentario(comentarioMock);
-        respuesta.setUsuario(usuarioMock); // Asignar usuario
+        respuesta.setUsuario(usuarioMock); // Asignar usuario// Necesario para el mapeo a DTO
 
         when(comentarioRepository.findById(1L)).thenReturn(Optional.of(comentarioMock));
         when(comentarioRepository.findByComentario(comentarioMock))

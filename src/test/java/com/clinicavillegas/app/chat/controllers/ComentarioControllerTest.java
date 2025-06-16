@@ -13,6 +13,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest; // Necesitas este import
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -58,7 +62,7 @@ public class ComentarioControllerTest {
     @Test
     void testObtenerComentarios() throws Exception {
         // Crear una lista simulada de comentarios
-        List<ComentarioResponse> comentarios = List.of(
+        List<ComentarioResponse> comentariosList = List.of(
                 ComentarioResponse.builder()
                         .id(1L)
                         .contenido("Primer comentario")
@@ -77,16 +81,28 @@ public class ComentarioControllerTest {
                         .build()
         );
 
+        // Crear un objeto Page a partir de la lista, especificando pageable y totalElements
+        // El tamaño de página por defecto de Spring Data es 10, así que lo replicamos aquí.
+        // PageRequest.of(número_de_página, tamaño_de_página)
+        Pageable defaultPageable = PageRequest.of(0, 10);
+        Page<ComentarioResponse> comentariosPage = new PageImpl<>(comentariosList, defaultPageable, comentariosList.size());
+
+
         // Configurar Mock para el servicio
-        when(comentarioService.obtenerComentarios()).thenReturn(comentarios);
+        when(comentarioService.obtenerComentarios(any(Pageable.class))).thenReturn(comentariosPage);
 
         // Realizar la solicitud GET al endpoint /comentarios
         mockMvc.perform(get("/api/comentarios")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].contenido").value("Primer comentario"))
-                .andExpect(jsonPath("$[1].contenido").value("Segundo comentario"));
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].contenido").value("Primer comentario"))
+                .andExpect(jsonPath("$.content[1].contenido").value("Segundo comentario"))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.number").value(0))
+                // Aquí, el assertion para 'size' ahora coincidirá con el 'size' del Pageable mockeado
+                .andExpect(jsonPath("$.size").value(10)); // <-- Este valor debe coincidir con el size del PageRequest.of() arriba
     }
 
     @Test

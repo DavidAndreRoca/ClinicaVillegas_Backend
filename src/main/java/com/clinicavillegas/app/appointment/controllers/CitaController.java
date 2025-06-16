@@ -6,70 +6,82 @@ import com.clinicavillegas.app.appointment.dto.request.ValidacionCitaRequest;
 import com.clinicavillegas.app.appointment.dto.response.CitaResponse;
 import com.clinicavillegas.app.appointment.services.CitaService;
 import com.clinicavillegas.app.common.EndpointPaths;
-
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping(EndpointPaths.CITA_BASE)
 public class CitaController {
 
     private final CitaService citaService;
+
     public CitaController(CitaService citaService) {
         this.citaService = citaService;
     }
 
     @GetMapping
-    public ResponseEntity<List<CitaResponse>> obtenerCitas(
-            @RequestParam(name = "usuarioId", required = false) Long usuarioId,
-            @RequestParam(name = "dentistaId", required = false) Long dentistaId,
-            @RequestParam(name = "estado", required = false) String estado,
-            @RequestParam(name = "fechaInicio", required = false) LocalDate fechaInicio,
-            @RequestParam(name = "fechaFin", required = false) LocalDate fechaFin,
-            @RequestParam(name = "tratamientoId", required = false) Long tratamientoId,
-            @RequestParam(name = "sexo", required = false) String sexo
-    ){
-        return ResponseEntity.ok(citaService.obtenerCitas(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo));
-    }
+    public ResponseEntity<?> buscarCitas(
+            @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) Long dentistaId,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            @RequestParam(required = false) Long tratamientoId,
+            @RequestParam(required = false) String sexo,
+            @RequestParam(required = false, defaultValue = "false") boolean all,
+            @PageableDefault(page = 0, size = 10, sort = "fecha") Pageable pageable) {
 
-    @PostMapping("/validar")
-    public ResponseEntity<Boolean> validarCita(@Valid @RequestBody ValidacionCitaRequest request){
-        boolean validacion = citaService.validarDisponibilidad(request);
-        return ResponseEntity.ok(validacion);
-    }
-
-    @PutMapping("/atender/{id}")
-    public ResponseEntity<Map<String, Object>> atenderCita(@PathVariable("id") Long id){
-        citaService.atenderCita(id);
-        return ResponseEntity.ok(Map.of("mensaje", "Cita atendida con exito"));
-    }
-  
-    @PutMapping("/reprogramar/{id}")
-    public ResponseEntity<Map<String, Object>> reprogramarCita(@PathVariable("id") Long id, @Valid @RequestBody CitaReprogramarRequest request){
-        citaService.reprogramarCita(id, request);
-        return ResponseEntity.ok(Map.of("mensaje", "Cita reprogramada con exito"));
+        if (all) {
+            List<CitaResponse> citas = citaService.obtenerCitas(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);
+            return ResponseEntity.ok(citas);
+        } else {
+            Page<CitaResponse> citasPage = citaService.obtenerCitasPaginadas(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo, pageable);
+            return ResponseEntity.ok(citasPage);
+        }
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarCita(@Valid @RequestBody CitaRequest citaRequest){
+    public ResponseEntity<Void> agregarCita(@Valid @RequestBody CitaRequest citaRequest) {
         citaService.agregarCita(citaRequest);
-        return ResponseEntity.ok(Map.of("mensaje", "Cita agregada con exito"));
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> actualizarCita(@PathVariable("id") Long id, @Valid @RequestBody CitaRequest citaRequest){
+    public ResponseEntity<Void> actualizarCita(@PathVariable Long id, @Valid @RequestBody CitaRequest citaRequest) {
         citaService.actualizarCita(id, citaRequest);
-        return ResponseEntity.ok(Map.of("mensaje", "Cita actualizada con exito"));
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}/atender")
+    public ResponseEntity<Void> atenderCita(@PathVariable Long id) {
+        citaService.atenderCita(id);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> eliminarCita(@PathVariable("id") Long id){
+    public ResponseEntity<Void> eliminarCita(@PathVariable Long id) {
         citaService.eliminarCita(id);
-        return ResponseEntity.ok(Map.of("mensaje", "Cita cancelada con exito"));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/validar-disponibilidad")
+    public ResponseEntity<Boolean> validarDisponibilidad(@Valid @RequestBody ValidacionCitaRequest request) {
+        boolean disponible = citaService.validarDisponibilidad(request);
+        return ResponseEntity.ok(disponible);
+    }
+
+    @PatchMapping("/{id}/reprogramar")
+    public ResponseEntity<Void> reprogramarCita(@PathVariable Long id, @Valid @RequestBody CitaReprogramarRequest request) {
+        citaService.reprogramarCita(id, request);
+        return ResponseEntity.ok().build();
     }
 }
