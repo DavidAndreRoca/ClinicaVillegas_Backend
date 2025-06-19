@@ -50,7 +50,6 @@ public class CitaController {
         }
     }
 
-
     @PostMapping
     public ResponseEntity<Void> agregarCita(@Valid @RequestBody CitaRequest citaRequest) {
         citaService.agregarCita(citaRequest);
