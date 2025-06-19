@@ -32,7 +32,6 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authRequest -> authRequest
-                                .requestMatchers("/api/citas/**").permitAll()
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                                 .requestMatchers(deepMatcher(EndpointPaths.USUARIO_BASE)).hasRole("ADMINISTRADOR")
