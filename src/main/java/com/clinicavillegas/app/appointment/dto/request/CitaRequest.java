@@ -59,4 +59,7 @@ public class CitaRequest {
 
     @NotBlank(message = "El ID del tratamiento asignado a la cita es un campo obligatorio y no puede estar vacío")
     Long tratamientoId;
+
+    @Size(max = 500, message = "Las observaciones no pueden superar los 500 caracteres")
+    private String observaciones;
 }

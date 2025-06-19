@@ -27,6 +27,9 @@ public class Cita extends AudityEntity {
     @Column(length = 10, nullable = false)
     private String estado;
 
+    @Column(length = 500, nullable = true)
+    private String observaciones;
+
     @Column(nullable = false)
     private BigDecimal monto;
 

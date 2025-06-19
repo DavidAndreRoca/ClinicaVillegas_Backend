@@ -139,12 +139,15 @@ class CitaServiceTest {
     void testEliminarCita() {
         Cita cita = new Cita();
         cita.setEstado("Pendiente");
+        String observacionesDeCancelacion = "Paciente canceló por motivos personales."; // ¡Nuevo!
 
         when(citaRepository.findById(1L)).thenReturn(Optional.of(cita));
 
-        citaService.eliminarCita(1L);
+        // ¡MODIFICACIÓN AQUÍ! Ahora pasamos las observaciones
+        citaService.eliminarCita(1L, observacionesDeCancelacion); // <--- CAMBIO CLAVE
 
-        assertEquals("Cancelada", cita.getEstado());
+        assertEquals("CANCELADA", cita.getEstado());
+        assertEquals(observacionesDeCancelacion, cita.getObservaciones()); // ¡Nuevo! Verificar observaciones
         verify(citaRepository).save(cita);
     }
 }

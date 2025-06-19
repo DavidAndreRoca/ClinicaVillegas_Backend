@@ -27,6 +27,7 @@ public class CitaMapper {
                 .telefono(cita.getUsuario().getTelefono())
                 .sexo(cita.getSexo().toString())
                 .estado(cita.getEstado())
+                .observaciones(cita.getObservaciones())
                 .fechaNacimiento(cita.getFechaNacimiento())
                 .dentista(DentistaResponse.builder()
                         .id(cita.getDentista().getId())
