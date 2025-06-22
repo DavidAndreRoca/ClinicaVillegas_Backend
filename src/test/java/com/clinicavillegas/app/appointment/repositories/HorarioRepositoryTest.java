@@ -4,6 +4,7 @@ import com.clinicavillegas.app.JpaTestConfig;
 import com.clinicavillegas.app.appointment.models.Dentista;
 import com.clinicavillegas.app.appointment.models.Dia;
 import com.clinicavillegas.app.appointment.models.Horario;
+import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
@@ -55,6 +56,7 @@ public class HorarioRepositoryTest {
                         .contrasena("clave789")
                         .correo("julio.sanchez@gmail.com")
                         .telefono("922333444")
+                        .rol(Rol.DENTISTA)
                         .numeroIdentidad("11112222")
                         .tipoDocumento(tipoDocumento)
                         .sexo(Sexo.MASCULINO)
