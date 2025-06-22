@@ -78,8 +78,10 @@ public class ReporteService {
         List<Predicate> predicates = new ArrayList<>();
         if (dto.getFiltros() != null) {
             for (Map.Entry<String, Object> filtro : dto.getFiltros().entrySet()) {
-                Expression<String> expr = mapCampoToExpression(filtro.getKey(), root, usuarioDentistaJoin, tratamientoJoin, tipoTratamientoJoin, tipoDocumentoJoin);
-                predicates.add(cb.equal(expr, filtro.getValue().toString()));
+                if (filtro.getKey() != null){
+                    Expression<String> expr = mapCampoToExpression(filtro.getKey(), root, usuarioDentistaJoin, tratamientoJoin, tipoTratamientoJoin, tipoDocumentoJoin);
+                    predicates.add(cb.equal(expr, filtro.getValue().toString()));
+                }
             }
         }
         if (dto.getFechaDesde() != null) {
@@ -128,9 +130,9 @@ public class ReporteService {
 
     private Expression<?> buildAggregation(String tipo, Expression<?> campo, CriteriaBuilder cb) {
         return switch (tipo.toLowerCase()) {
-            case "count" -> cb.count(campo);
-            case "sum" -> cb.sum((Expression<Number>) campo);
-            case "avg" -> cb.avg((Expression<Number>) campo);
+            case "conteo" -> cb.count(campo);
+            case "suma" -> cb.sum((Expression<Number>) campo);
+            case "promedio" -> cb.avg((Expression<Number>) campo);
             case "max" -> cb.max((Expression<Number>) campo);
             case "min" -> cb.min((Expression<Number>) campo);
             default -> throw new IllegalArgumentException("Agregación no soportada: " + tipo);
