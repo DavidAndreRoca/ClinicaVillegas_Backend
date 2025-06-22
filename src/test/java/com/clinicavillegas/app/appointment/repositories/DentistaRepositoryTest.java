@@ -2,6 +2,7 @@ package com.clinicavillegas.app.appointment.repositories;
 
 import com.clinicavillegas.app.JpaTestConfig;
 import com.clinicavillegas.app.appointment.models.Dentista;
+import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
@@ -56,6 +57,7 @@ public class DentistaRepositoryTest {
                         .correo("luis.ramos@gmail.com")
                         .telefono("999888777")
                         .numeroIdentidad("12345678")
+                        .rol(Rol.DENTISTA)
                         .tipoDocumento(tipoDocumento)
                         .sexo(Sexo.MASCULINO)
                         .fechaNacimiento(LocalDate.of(1990, 1, 1))
@@ -86,6 +88,7 @@ public class DentistaRepositoryTest {
                         .numeroIdentidad("87654321")
                         .tipoDocumento(tipoDocumento)
                         .sexo(Sexo.FEMENINO)
+                        .rol(Rol.DENTISTA)
                         .fechaNacimiento(LocalDate.of(1992, 3, 15))
                         .estado(true)
                         .build()
