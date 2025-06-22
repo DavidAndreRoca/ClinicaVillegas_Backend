@@ -2,6 +2,7 @@ package com.clinicavillegas.app.appointment.repositories;
 
 import com.clinicavillegas.app.JpaTestConfig;
 import com.clinicavillegas.app.appointment.models.*;
+import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
@@ -53,6 +54,7 @@ public class CitaRepositoryTest {
                         .nombres("Luis")
                         .apellidoPaterno("Ramos")
                         .apellidoMaterno("Pérez")
+                        .rol(Rol.DENTISTA)
                         .contrasena("jbyuy$vty%4f")
                         .correo("lorem@gmail.com")
                         .telefono("987654321")

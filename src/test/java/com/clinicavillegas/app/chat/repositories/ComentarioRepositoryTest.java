@@ -2,6 +2,7 @@ package com.clinicavillegas.app.chat.repositories;
 
 import com.clinicavillegas.app.JpaTestConfig;
 import com.clinicavillegas.app.chat.models.Comentario;
+import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
@@ -54,6 +55,7 @@ public class ComentarioRepositoryTest {
                         .contrasena("securepass123")
                         .correo("ana.garcia@example.com")
                         .telefono("987654321")
+                        .rol(Rol.PACIENTE)
                         .numeroIdentidad("99887766")
                         .tipoDocumento(tipoDocumento)
                         .sexo(Sexo.FEMENINO)
