@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.appointment.controllers;
 
+import com.clinicavillegas.app.appointment.dto.request.CancelacionCitaRequest;
 import com.clinicavillegas.app.appointment.dto.request.CitaReprogramarRequest;
 import com.clinicavillegas.app.appointment.dto.request.CitaRequest;
 import com.clinicavillegas.app.appointment.dto.request.ValidacionCitaRequest;
@@ -67,10 +68,11 @@ public class CitaController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarCita(@PathVariable Long id) {
-        citaService.eliminarCita(id);
-        return ResponseEntity.noContent().build();
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<Void> eliminarCita(@PathVariable Long id, @Valid @RequestBody CancelacionCitaRequest request) {
+        String observaciones = request.getObservaciones();
+        citaService.eliminarCita(id, observaciones);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/validar-disponibilidad")
