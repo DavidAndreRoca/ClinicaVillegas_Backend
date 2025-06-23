@@ -224,7 +224,7 @@ public class DefaultCitaService implements CitaService {
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
-        cita.setEstado("CANCELADA");
+        cita.setEstado("Cancelada");
         cita.setObservaciones(observaciones);
         citaRepository.save(cita);
     }
