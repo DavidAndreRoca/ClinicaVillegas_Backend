@@ -30,6 +30,7 @@ public class CitaResponse {
     String telefono;
     LocalDate fechaNacimiento;
     String estado;
+    String observaciones;
     DentistaResponse dentista;
     Long usuarioId;
     Tratamiento tratamiento;

@@ -28,7 +28,7 @@ public interface CitaService {
     void agregarCita(CitaRequest citaRequest);
     void actualizarCita(Long id, CitaRequest citaRequest);
     void atenderCita(Long id);
-    void eliminarCita(Long id);
+    void eliminarCita(Long id, String observaciones);
     boolean validarDisponibilidad(ValidacionCitaRequest request);
     void reprogramarCita(Long id, CitaReprogramarRequest request);
 }

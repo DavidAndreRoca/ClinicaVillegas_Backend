@@ -219,12 +219,13 @@ public class DefaultCitaService implements CitaService {
             @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true),
             @CacheEvict(value = CACHE_CITAS_LISTA_SIN_PAGINAR, allEntries = true)
     })
-    public void eliminarCita(Long id) {
+    public void eliminarCita(Long id, String observaciones) {
         log.info("Marcando cita como cancelada (lógico) en la base de datos y caché para ID: {}", id);
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
-        cita.setEstado("Cancelada");
+        cita.setEstado("CANCELADA");
+        cita.setObservaciones(observaciones);
         citaRepository.save(cita);
     }
 
