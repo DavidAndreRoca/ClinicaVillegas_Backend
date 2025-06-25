@@ -10,6 +10,7 @@ import com.clinicavillegas.app.common.EndpointPaths;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -39,7 +40,7 @@ public class CitaController {
             @RequestParam(required = false) Long tratamientoId,
             @RequestParam(required = false) String sexo,
             @RequestParam(required = false, defaultValue = "false") boolean all,
-            @PageableDefault(page = 0, size = 10, sort = "fecha") Pageable pageable) {
+            @PageableDefault(page = 0, size = 10, sort = "fecha", direction = Sort.Direction.DESC) Pageable pageable) {
 
         if (all) {
             List<CitaResponse> citas = citaService.obtenerCitas(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);
