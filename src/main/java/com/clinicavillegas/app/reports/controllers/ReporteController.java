@@ -2,6 +2,7 @@ package com.clinicavillegas.app.reports.controllers;
 
 import com.clinicavillegas.app.common.EndpointPaths;
 import com.clinicavillegas.app.reports.dto.ReporteRequestDTO;
+import com.clinicavillegas.app.reports.services.ReporteExcelService;
 import com.clinicavillegas.app.reports.services.ReportePdfService;
 import com.clinicavillegas.app.reports.services.ReporteService;
 import com.clinicavillegas.app.user.models.Usuario;
@@ -22,10 +23,12 @@ public class ReporteController {
 
     private final ReporteService reporteService;
     private final ReportePdfService reportePdfService;
+    private final ReporteExcelService reporteExcelService;
 
-    public ReporteController(ReporteService reporteService, ReportePdfService reportePdfService) {
+    public ReporteController(ReporteService reporteService, ReportePdfService reportePdfService, ReporteExcelService reporteExcelService) {
         this.reporteService = reporteService;
         this.reportePdfService = reportePdfService;
+        this.reporteExcelService = reporteExcelService;
     }
 
     @PostMapping
@@ -52,10 +55,22 @@ public class ReporteController {
             return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
 
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(e.getMessage());
         }
+    }
+    @PostMapping("/excel")
+    public ResponseEntity<byte[]> generarReporteExcel(@RequestBody ReporteRequestDTO dto,
+                                                      @AuthenticationPrincipal Usuario usuario) throws Exception {
+        byte[] excelBytes = reporteExcelService.generarReporteExcel(dto, usuario);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename("reporte_citas.xlsx")
+                .build());
+
+        return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
     }
 }
 
