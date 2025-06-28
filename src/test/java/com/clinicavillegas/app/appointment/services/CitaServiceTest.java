@@ -146,7 +146,7 @@ class CitaServiceTest {
         // ¡MODIFICACIÓN AQUÍ! Ahora pasamos las observaciones
         citaService.eliminarCita(1L, observacionesDeCancelacion); // <--- CAMBIO CLAVE
 
-        assertEquals("CANCELADA", cita.getEstado());
+        assertEquals("Cancelada", cita.getEstado());
         assertEquals(observacionesDeCancelacion, cita.getObservaciones()); // ¡Nuevo! Verificar observaciones
         verify(citaRepository).save(cita);
     }

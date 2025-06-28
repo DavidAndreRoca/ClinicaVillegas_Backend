@@ -1,17 +1,27 @@
 package com.clinicavillegas.app.reports.services;
 
 import com.clinicavillegas.app.appointment.models.Cita;
+import com.clinicavillegas.app.appointment.models.Dentista;
+import com.clinicavillegas.app.appointment.models.TipoTratamiento;
+import com.clinicavillegas.app.appointment.models.Tratamiento;
 import com.clinicavillegas.app.appointment.repositories.CitaRepository;
-import com.clinicavillegas.app.appointment.specifications.CitaSpecification;
 import com.clinicavillegas.app.reports.dto.ReporteRequestDTO;
+import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import jakarta.persistence.criteria.*;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.labels.ItemLabelAnchor;
+import org.jfree.chart.labels.ItemLabelPosition;
+import org.jfree.chart.labels.StandardCategoryItemLabelGenerator;
+import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -20,9 +30,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -84,7 +93,13 @@ public class ReportePdfService {
         document.add(title);
 
         document.add(new Paragraph("Fecha: " + LocalDate.now()));
-        document.add(new Paragraph("Usuario: " + usuarioSolicitante.getNombres() + " " + usuarioSolicitante.getApellidoPaterno()));
+        document.add(new Paragraph(usuarioSolicitante.getRol().name() + ": " + usuarioSolicitante.getNombres() + " " + usuarioSolicitante.getApellidoPaterno()));
+        if (dto.getFechaDesde() != null){
+            document.add(new Paragraph("Desde: " + dto.getFechaDesde()));
+        }
+        if (dto.getFechaHasta() != null){
+            document.add(new Paragraph("Hasta: " + dto.getFechaHasta()));
+        }
         document.add(Chunk.NEWLINE);
     }
     private JFreeChart generarGrafico(List<Map<String, Object>> resumen, ReporteRequestDTO dto) {
@@ -107,7 +122,7 @@ public class ReportePdfService {
             }
         }
 
-        return ChartFactory.createBarChart(
+        JFreeChart chart = ChartFactory.createBarChart(
                 "Resumen gráfico",
                 fila,
                 dto.getAgregacion(),
@@ -117,8 +132,19 @@ public class ReportePdfService {
                 true,
                 false
         );
-    }
 
+        CategoryPlot plot = (CategoryPlot) chart.getPlot();
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setDefaultItemLabelGenerator(new StandardCategoryItemLabelGenerator());
+        renderer.setDefaultItemLabelsVisible(true);
+
+        renderer.setDefaultItemLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 12));
+        renderer.setDefaultPositiveItemLabelPosition(
+                new ItemLabelPosition(ItemLabelAnchor.OUTSIDE12, TextAnchor.BASELINE_CENTER)
+        );
+
+        return chart;
+    }
 
     private void agregarGrafico(Document document, JFreeChart chart) throws Exception {
         int width = 500;
@@ -135,16 +161,43 @@ public class ReportePdfService {
     private void agregarTablaResumen(Document document, List<Map<String, Object>> resumen) throws DocumentException {
         if (resumen.isEmpty()) return;
 
-        Set<String> columnas = resumen.getFirst().keySet();
+        List<String> columnas = new ArrayList<>(resumen.getFirst().keySet());
         PdfPTable table = new PdfPTable(columnas.size());
         table.setWidthPercentage(100);
 
         // Headers
         columnas.forEach(col -> table.addCell(new PdfPCell(new Phrase(col))));
 
+        // Inicializar mapa de totales
+        Map<String, Double> totales = new HashMap<>();
+        columnas.forEach(col -> totales.put(col, 0.0));
+
+        // Filas de datos
         for (Map<String, Object> row : resumen) {
             for (String col : columnas) {
-                table.addCell(new PdfPCell(new Phrase(row.get(col).toString())));
+                Object valor = row.get(col);
+                String valorStr = valor != null ? valor.toString() : "";
+                table.addCell(new PdfPCell(new Phrase(valorStr)));
+
+                if (valor instanceof Number number) {
+                    totales.put(col, totales.get(col) + number.doubleValue());
+                }
+            }
+        }
+
+        // Fila de totales
+        for (int i = 0; i < columnas.size(); i++) {
+            String col = columnas.get(i);
+            if (i == 0) {
+                // Primera celda dice "TOTAL"
+                table.addCell(new PdfPCell(new Phrase("TOTAL")));
+            } else {
+                Double total = totales.get(col);
+                if (total != null && total != 0.0) {
+                    table.addCell(new PdfPCell(new Phrase(String.format("%.2f", total))));
+                } else {
+                    table.addCell(new PdfPCell(new Phrase("")));
+                }
             }
         }
 
@@ -154,6 +207,8 @@ public class ReportePdfService {
         document.add(table);
         document.add(Chunk.NEWLINE);
     }
+
+
     private void agregarDetalles(Document document, ReporteRequestDTO dto) throws DocumentException {
         List<Cita> citas = obtenerCitasFiltradas(dto);
 
@@ -166,8 +221,8 @@ public class ReportePdfService {
             subtitulo.setSpacingBefore(10);
             document.add(subtitulo);
 
-            PdfPTable table = new PdfPTable(5);
-            Stream.of("Fecha", "Paciente", "Tratamiento", "Dentista", "Monto")
+            PdfPTable table = new PdfPTable(6);
+            Stream.of("Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Observaciones")
                     .forEach(h -> table.addCell(new PdfPCell(new Phrase(h))));
 
             for (Cita c : entry.getValue()) {
@@ -176,6 +231,7 @@ public class ReportePdfService {
                 table.addCell(c.getTratamiento().getNombre());
                 table.addCell(c.getDentista().getUsuario().getNombres());
                 table.addCell(c.getMonto().toString());
+                table.addCell(c.getObservaciones() != null ? c.getObservaciones():"");
             }
 
             document.add(table);
@@ -191,34 +247,57 @@ public class ReportePdfService {
         };
     }
     public List<Cita> obtenerCitasFiltradas(ReporteRequestDTO dto) {
-        Specification<Cita> spec = Specification.where(null);
+        Specification<Cita> spec = (root, query, cb) -> {
+            // Joins reutilizables
+            Join<Cita, Tratamiento> tratamientoJoin = root.join("tratamiento", JoinType.LEFT);
+            Join<Tratamiento, TipoTratamiento> tipoTratamientoJoin = tratamientoJoin.join("tipoTratamiento", JoinType.LEFT);
+            Join<Cita, Dentista> dentistaJoin = root.join("dentista", JoinType.LEFT);
+            Join<Dentista, Usuario> usuarioDentistaJoin = dentistaJoin.join("usuario", JoinType.LEFT);
+            Join<Cita, Usuario> usuarioPacienteJoin = root.join("usuario", JoinType.LEFT);
+            Join<Usuario, TipoDocumento> tipoDocumentoJoin = usuarioPacienteJoin.join("tipoDocumento", JoinType.LEFT);
 
-        if (dto.getFiltros() != null) {
-            for (Map.Entry<String, Object> filtro : dto.getFiltros().entrySet()) {
-                switch (filtro.getKey()) {
-                    case "usuarioId" -> spec = spec.and(CitaSpecification.conUsuarioId(asLong(filtro.getValue())));
-                    case "dentistaId" -> spec = spec.and(CitaSpecification.conDentistaId(asLong(filtro.getValue())));
-                    case "estado" -> spec = spec.and(CitaSpecification.conEstado(filtro.getValue().toString()));
-                    case "fecha" -> spec = spec.and(CitaSpecification.conFecha(asLocalDate(filtro.getValue())));
-                    case "tratamientoId" -> spec = spec.and(CitaSpecification.conTratamientoId(asLong(filtro.getValue())));
-                    case "sexo" -> spec = spec.and(CitaSpecification.conSexo(filtro.getValue().toString()));
+            Map<String, Join<?, ?>> joins = Map.of(
+                    "tratamiento", tratamientoJoin,
+                    "tipoTratamiento", tipoTratamientoJoin,
+                    "usuarioDentista", usuarioDentistaJoin,
+                    "tipoDocumento", tipoDocumentoJoin
+            );
+            System.out.println("Joins inicializados: " + joins.keySet());
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (dto.getFiltros() != null) {
+                for (Map.Entry<String, Object> filtro : dto.getFiltros().entrySet()) {
+                    System.out.println("Filtro recibido: " + filtro.getKey() + " = " + filtro.getValue());
+                    Path<?> path = mapCampoToPath(filtro.getKey(), root, joins);
+                    System.out.println("Path generado para filtro " + filtro.getKey() + ": " + path);
+                    predicates.add(cb.equal(path, filtro.getValue()));
                 }
             }
-        }
 
-        if (dto.getFechaDesde() != null && dto.getFechaHasta() != null) {
-            spec = spec.and(CitaSpecification.conRangoFecha(dto.getFechaDesde(), dto.getFechaHasta()));
-        }
-
+            if (dto.getFechaDesde() != null && dto.getFechaHasta() != null) {
+                predicates.add(cb.between(root.get("fecha"), dto.getFechaDesde(), dto.getFechaHasta()));
+            }
+            System.out.println("Agregando filtro: " + predicates);
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        System.out.println("Citas encontradas: " + citaRepository.findAll(spec).size());
         return citaRepository.findAll(spec);
     }
 
-    private Long asLong(Object value) {
-        return value == null ? null : Long.valueOf(value.toString());
-    }
 
-    private LocalDate asLocalDate(Object value) {
-        return value == null ? null : LocalDate.parse(value.toString());
+    private Path<?> mapCampoToPath(
+            String campo,
+            Root<Cita> root,
+            Map<String, Join<?, ?>> joins
+    ) {
+        return switch (campo) {
+            case "estado" -> root.get("estado");
+            case "sexo" -> root.get("sexo");
+            case "tratamiento" -> joins.get("tratamiento").get("nombre");
+            case "tipoTratamiento" -> joins.get("tipoTratamiento").get("nombre");
+            case "dentista" -> joins.get("usuarioDentista").get("nombres");
+            case "tipoDocumento" -> joins.get("tipoDocumento").get("nombre");
+            default -> root.get(campo);
+        };
     }
-
 }
