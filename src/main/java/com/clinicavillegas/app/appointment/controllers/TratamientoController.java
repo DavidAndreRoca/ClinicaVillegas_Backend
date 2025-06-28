@@ -26,7 +26,7 @@ public class TratamientoController {
     public ResponseEntity<?> getTratamientos(
             @RequestParam(name = "tipo", required = false) Long tipoId,
             @RequestParam(name = "nombre", required = false) String nombre,
-            @RequestParam(name = "estado", required = false) Boolean estado,
+            @RequestParam(name = "estado", defaultValue = "true") Boolean estado,
             @RequestParam(required = false, defaultValue = "false") boolean all, // Parámetro 'all'
             @PageableDefault(page = 0, size = 10, sort = "nombre") Pageable pageable) { // Pageable con valores por defecto
 
