@@ -1,10 +1,14 @@
 package com.clinicavillegas.app.reports.services;
 
 import com.clinicavillegas.app.appointment.models.Cita;
+import com.clinicavillegas.app.appointment.models.Dentista;
+import com.clinicavillegas.app.appointment.models.TipoTratamiento;
+import com.clinicavillegas.app.appointment.models.Tratamiento;
 import com.clinicavillegas.app.appointment.repositories.CitaRepository;
-import com.clinicavillegas.app.appointment.specifications.CitaSpecification;
 import com.clinicavillegas.app.reports.dto.ReporteRequestDTO;
+import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
+import jakarta.persistence.criteria.*;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
@@ -12,7 +16,11 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,8 +46,9 @@ public class ReporteExcelService {
         XSSFCellStyle normalStyle = workbook.createCellStyle();
 
         Sheet resumenSheet = workbook.createSheet("Resumen Reporte");
-        int rowIndex = 0;
-        rowIndex = agregarEncabezado(resumenSheet, rowIndex, usuarioSolicitante, dto, normalStyle);
+        insertarLogo(workbook, resumenSheet);
+        int rowIndex = 6;
+        rowIndex = agregarEncabezado(resumenSheet, rowIndex, usuarioSolicitante, dto, dateStyle);
 
         List<Map<String, Object>> resumen = reporteService.generarPivotReporte(dto);
         rowIndex = agregarResumen(resumenSheet, rowIndex, resumen, headerStyle, numberStyle, normalStyle);
@@ -79,7 +88,7 @@ public class ReporteExcelService {
         return style;
     }
 
-    private int agregarEncabezado(Sheet sheet, int rowIndex, Usuario usuario, ReporteRequestDTO dto, CellStyle style) {
+    private int agregarEncabezado(Sheet sheet, int rowIndex, Usuario usuario, ReporteRequestDTO dto, CellStyle dateStyle) {
         Row row = sheet.createRow(rowIndex++);
         row.createCell(0).setCellValue("REPORTE DE CITAS");
 
@@ -88,9 +97,21 @@ public class ReporteExcelService {
         row.createCell(1).setCellValue(LocalDate.now().toString());
 
         row = sheet.createRow(rowIndex++);
-        row.createCell(0).setCellValue("Usuario:");
+        row.createCell(0).setCellValue(usuario.getRol().name() + ":");
         row.createCell(1).setCellValue(usuario.getNombres() + " " + usuario.getApellidoPaterno());
 
+        if (dto.getFechaDesde() != null){
+            row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue("Fecha de inicio");
+            row.createCell(1).setCellValue(dto.getFechaDesde());
+            row.getCell(1).setCellStyle(dateStyle);
+        }
+        if (dto.getFechaHasta() != null){
+            row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue("Fecha de fin");
+            row.createCell(1).setCellValue(dto.getFechaDesde());
+            row.getCell(1).setCellStyle(dateStyle);
+        }
         return rowIndex + 1;
     }
 
@@ -148,7 +169,7 @@ public class ReporteExcelService {
             groupCell.setCellStyle(headerStyle);
 
             Row header = sheet.createRow(rowIndex++);
-            String[] headers = {"Fecha", "Paciente", "Tratamiento", "Dentista", "Monto"};
+            String[] headers = {"Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Observaciones"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = header.createCell(i);
                 cell.setCellValue(headers[i]);
@@ -173,6 +194,9 @@ public class ReporteExcelService {
                 Cell montoCell = row.createCell(4);
                 montoCell.setCellValue(c.getMonto().doubleValue());
                 montoCell.setCellStyle(numberStyle);
+
+                row.createCell(5).setCellValue(c.getObservaciones());
+                row.getCell(5).setCellStyle(textStyle);
             }
 
             rowIndex++;
@@ -193,34 +217,75 @@ public class ReporteExcelService {
         };
     }
 
-    private List<Cita> obtenerCitasFiltradas(ReporteRequestDTO dto) {
-        Specification<Cita> spec = Specification.where(null);
+    public List<Cita> obtenerCitasFiltradas(ReporteRequestDTO dto) {
+        Specification<Cita> spec = (root, query, cb) -> {
+            // Joins reutilizables
+            Join<Cita, Tratamiento> tratamientoJoin = root.join("tratamiento", JoinType.LEFT);
+            Join<Tratamiento, TipoTratamiento> tipoTratamientoJoin = tratamientoJoin.join("tipoTratamiento", JoinType.LEFT);
+            Join<Cita, Dentista> dentistaJoin = root.join("dentista", JoinType.LEFT);
+            Join<Dentista, Usuario> usuarioDentistaJoin = dentistaJoin.join("usuario", JoinType.LEFT);
+            Join<Cita, Usuario> usuarioPacienteJoin = root.join("usuario", JoinType.LEFT);
+            Join<Usuario, TipoDocumento> tipoDocumentoJoin = usuarioPacienteJoin.join("tipoDocumento", JoinType.LEFT);
 
-        if (dto.getFiltros() != null) {
-            for (Map.Entry<String, Object> filtro : dto.getFiltros().entrySet()) {
-                switch (filtro.getKey()) {
-                    case "usuarioId" -> spec = spec.and(CitaSpecification.conUsuarioId(asLong(filtro.getValue())));
-                    case "dentistaId" -> spec = spec.and(CitaSpecification.conDentistaId(asLong(filtro.getValue())));
-                    case "estado" -> spec = spec.and(CitaSpecification.conEstado(filtro.getValue().toString()));
-                    case "fecha" -> spec = spec.and(CitaSpecification.conFecha(asLocalDate(filtro.getValue())));
-                    case "tratamientoId" -> spec = spec.and(CitaSpecification.conTratamientoId(asLong(filtro.getValue())));
-                    case "sexo" -> spec = spec.and(CitaSpecification.conSexo(filtro.getValue().toString()));
+            Map<String, Join<?, ?>> joins = Map.of(
+                    "tratamiento", tratamientoJoin,
+                    "tipoTratamiento", tipoTratamientoJoin,
+                    "usuarioDentista", usuarioDentistaJoin,
+                    "tipoDocumento", tipoDocumentoJoin
+            );
+            System.out.println("Joins inicializados: " + joins.keySet());
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (dto.getFiltros() != null) {
+                for (Map.Entry<String, Object> filtro : dto.getFiltros().entrySet()) {
+                    System.out.println("Filtro recibido: " + filtro.getKey() + " = " + filtro.getValue());
+                    Path<?> path = mapCampoToPath(filtro.getKey(), root, joins);
+                    System.out.println("Path generado para filtro " + filtro.getKey() + ": " + path);
+                    predicates.add(cb.equal(path, filtro.getValue()));
                 }
             }
-        }
 
-        if (dto.getFechaDesde() != null && dto.getFechaHasta() != null) {
-            spec = spec.and(CitaSpecification.conRangoFecha(dto.getFechaDesde(), dto.getFechaHasta()));
-        }
-
+            if (dto.getFechaDesde() != null && dto.getFechaHasta() != null) {
+                predicates.add(cb.between(root.get("fecha"), dto.getFechaDesde(), dto.getFechaHasta()));
+            }
+            System.out.println("Agregando filtro: " + predicates);
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        System.out.println("Citas encontradas: " + citaRepository.findAll(spec).size());
         return citaRepository.findAll(spec);
     }
 
-    private Long asLong(Object value) {
-        return value == null ? null : Long.valueOf(value.toString());
-    }
 
-    private LocalDate asLocalDate(Object value) {
-        return value == null ? null : LocalDate.parse(value.toString());
+    private Path<?> mapCampoToPath(
+            String campo,
+            Root<Cita> root,
+            Map<String, Join<?, ?>> joins
+    ) {
+        return switch (campo) {
+            case "estado" -> root.get("estado");
+            case "sexo" -> root.get("sexo");
+            case "tratamiento" -> joins.get("tratamiento").get("nombre");
+            case "tipoTratamiento" -> joins.get("tipoTratamiento").get("nombre");
+            case "dentista" -> joins.get("usuarioDentista").get("nombres");
+            case "tipoDocumento" -> joins.get("tipoDocumento").get("nombre");
+            default -> root.get(campo);
+        };
+    }
+    private void insertarLogo(XSSFWorkbook workbook, Sheet sheet) throws IOException {
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream("static/logo.jpg");
+        if (inputStream == null) throw new FileNotFoundException("No se encontró el logo en static/logo.jpg");
+        byte[] bytes = inputStream.readAllBytes();
+        int pictureIdx = workbook.addPicture(bytes, Workbook.PICTURE_TYPE_JPEG);
+        inputStream.close();
+
+        CreationHelper helper = workbook.getCreationHelper();
+        Drawing<?> drawing = sheet.createDrawingPatriarch();
+        ClientAnchor anchor = helper.createClientAnchor();
+        anchor.setCol1(0);
+        anchor.setRow1(0);
+        anchor.setCol2(3);
+        anchor.setRow2(5);
+
+        drawing.createPicture(anchor, pictureIdx);
     }
 }

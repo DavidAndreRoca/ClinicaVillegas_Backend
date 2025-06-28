@@ -5,6 +5,7 @@ import com.clinicavillegas.app.reports.dto.ReporteRequestDTO;
 import com.clinicavillegas.app.reports.services.ReporteExcelService;
 import com.clinicavillegas.app.reports.services.ReportePdfService;
 import com.clinicavillegas.app.reports.services.ReporteService;
+import com.clinicavillegas.app.user.models.Rol;
 import com.clinicavillegas.app.user.models.Usuario;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,16 +33,27 @@ public class ReporteController {
     }
 
     @PostMapping
-    public ResponseEntity<List<Map<String, Object>>> generarReporte(@RequestBody ReporteRequestDTO dto) {
+    public ResponseEntity<List<Map<String, Object>>> generarReporte(
+            @RequestBody ReporteRequestDTO dto,
+            @AuthenticationPrincipal Usuario usuario
+    ) {
+        if (usuario.getRol().equals(Rol.DENTISTA)){
+            dto.getFiltros().put("dentista", usuario.getNombres());
+        }
         List<Map<String, Object>> reporte = reporteService.generarPivotReporte(dto);
         return ResponseEntity.ok(reporte);
     }
+
+
     @PostMapping(value = "/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<?> generarReportePdf(
             @RequestBody ReporteRequestDTO dto,
-            @AuthenticationPrincipal Usuario usuario // Asumiendo autenticación Spring Security
+            @AuthenticationPrincipal Usuario usuario
     ) {
         try {
+            if (usuario.getRol().equals(Rol.DENTISTA)){
+                dto.getFiltros().put("dentista", usuario.getNombres());
+            }
             byte[] pdf = reportePdfService.generarReportePdf(dto, usuario);
 
             HttpHeaders headers = new HttpHeaders();
@@ -62,12 +74,15 @@ public class ReporteController {
     @PostMapping("/excel")
     public ResponseEntity<byte[]> generarReporteExcel(@RequestBody ReporteRequestDTO dto,
                                                       @AuthenticationPrincipal Usuario usuario) throws Exception {
+        if (usuario.getRol().equals(Rol.DENTISTA)){
+            dto.getFiltros().put("dentista", usuario.getNombres());
+        }
         byte[] excelBytes = reporteExcelService.generarReporteExcel(dto, usuario);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("reporte_citas.xlsx")
+                .filename("reporte_" + LocalDate.now() + ".xlsx")
                 .build());
 
         return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);

@@ -4,13 +4,15 @@ import com.clinicavillegas.app.chat.dto.request.ComentarioRequest;
 import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.services.ComentarioService;
 import com.clinicavillegas.app.common.EndpointPaths;
+import com.clinicavillegas.app.user.models.Rol;
+import com.clinicavillegas.app.user.models.Usuario;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page; // Importar Page
-import org.springframework.data.domain.Pageable; // Importar Pageable
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -31,7 +33,10 @@ public class ComentarioController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> agregarComentario(@Valid @RequestBody ComentarioRequest request){
+    public ResponseEntity<Map<String, Object>> agregarComentario(@Valid @RequestBody ComentarioRequest request, @AuthenticationPrincipal Usuario usario){
+        if (usario.getRol().equals(Rol.DENTISTA)){
+            request.setUsuarioId(usario.getId());
+        }
         comentarioService.agregarComentario(request);
         return ResponseEntity.ok(Map.of("mensaje", "Comentario agregado con exito"));
     }
