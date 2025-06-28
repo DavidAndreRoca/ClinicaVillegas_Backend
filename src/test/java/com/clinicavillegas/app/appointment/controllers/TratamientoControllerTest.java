@@ -102,7 +102,6 @@ public class TratamientoControllerTest {
 
         List<Tratamiento> tratamientosActivos = Arrays.asList(activo1);
 
-        // Se espera que el controlador llame a obtenerTratamientosPaginados
         when(tratamientoService.obtenerTratamientosPaginados(isNull(), isNull(), eq(true), Mockito.any(Pageable.class)))
                 .thenReturn(new PageImpl<>(tratamientosActivos));
 
@@ -130,8 +129,7 @@ public class TratamientoControllerTest {
 
         List<Tratamiento> tratamientosActivosDefault = Arrays.asList(activoDefault1);
 
-        // Se espera que el controlador llame a obtenerTratamientosPaginados
-        when(tratamientoService.obtenerTratamientosPaginados(isNull(), isNull(), isNull(), Mockito.any(Pageable.class)))
+        when(tratamientoService.obtenerTratamientosPaginados(isNull(), isNull(), eq(true), Mockito.any(Pageable.class)))
                 .thenReturn(new PageImpl<>(tratamientosActivosDefault));
 
         mockMvc.perform(get("/api/tratamientos")
@@ -161,26 +159,25 @@ public class TratamientoControllerTest {
                 .descripcion("Descripcion 2")
                 .costo(BigDecimal.valueOf(300.00))
                 .duracion(Duration.ofMinutes(90))
-                .estado(false) // Incluimos uno inactivo para mostrar que 'all' los trae
+                .estado(false)
                 .imagenURL("url_all2.jpg")
                 .build();
 
         List<Tratamiento> todosLosTratamientos = Arrays.asList(allTratamiento1, allTratamiento2);
 
-        // Se espera que el controlador llame a obtenerTodosTratamientos cuando 'all' es true
-        when(tratamientoService.obtenerTodosTratamientos(isNull(), isNull(), isNull()))
+        when(tratamientoService.obtenerTodosTratamientos(isNull(), isNull(), eq(true)))
                 .thenReturn(todosLosTratamientos);
 
         mockMvc.perform(get("/api/tratamientos")
-                        .param("all", "true") // Aquí indicamos all=true
+                        .param("all", "true")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2)) // Se espera una lista directa, no un objeto Page
+                .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").value(6L))
                 .andExpect(jsonPath("$[0].nombre").value("Tratamiento Completo 1"))
                 .andExpect(jsonPath("$[1].id").value(7L))
                 .andExpect(jsonPath("$[1].nombre").value("Tratamiento Completo 2"))
-                .andExpect(jsonPath("$[1].estado").value(false)); // Validar que incluye inactivos
+                .andExpect(jsonPath("$[1].estado").value(false));
     }
 
     @Test
