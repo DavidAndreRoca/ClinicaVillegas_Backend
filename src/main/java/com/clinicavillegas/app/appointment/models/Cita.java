@@ -55,6 +55,7 @@ public class Cita extends AudityEntity {
     @Column(length = 25, nullable = false)
     private String numeroIdentidad;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Sexo sexo;
 

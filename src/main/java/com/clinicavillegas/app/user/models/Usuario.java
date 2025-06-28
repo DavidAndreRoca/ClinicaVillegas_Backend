@@ -39,6 +39,7 @@ public class Usuario extends AudityEntity implements UserDetails {
     private String numeroIdentidad;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Sexo sexo;
 
     @Column(length = 9, nullable = false)
@@ -56,6 +57,7 @@ public class Usuario extends AudityEntity implements UserDetails {
     private boolean estado;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Rol rol;
 
     @ManyToOne
