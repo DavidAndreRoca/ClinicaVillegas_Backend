@@ -13,6 +13,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Random;
 
 @Slf4j
@@ -77,7 +79,6 @@ public class DefaultEmailService implements EmailService {
             helper.setTo(cita.getUsuario().getCorreo());
             helper.setSubject("Recordatorio de cita");
 
-            // Contenido HTML con diseño mejorado y más detalles
             String htmlContent = String.format(
                     MailTemplates.USER_REMINDER,
                     cita.getUsuario().getNombres(),
@@ -121,6 +122,99 @@ public class DefaultEmailService implements EmailService {
             javaMailSender.send(mimeMessageDentista);
         } catch (Exception  e) {
             log.error("Error al enviar el correo de recordatorio al dentista: {}", e.getMessage());
+        }
+
+    }
+    public void enviarConfirmacionReserva(Cita cita) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("ClinicaDentalVillegas<" + emisor + ">");
+            helper.setTo(cita.getUsuario().getCorreo());
+            helper.setSubject("Confirmación de reserva de cita");
+
+            String htmlContent = String.format(
+                    MailTemplates.USER_CONFIRMATION,
+                    cita.getUsuario().getNombres(),
+                    cita.getUsuario().getApellidoPaterno(),
+                    cita.getUsuario().getApellidoMaterno(),
+                    cita.getFecha().toString(),
+                    cita.getHora().toString(),
+                    cita.getTratamiento().getNombre(),
+                    cita.getMonto().toString(),
+                    cita.getTipoDocumento().getNombre(),
+                    cita.getNumeroIdentidad(),
+                    cita.getDentista().getUsuario().getNombres(),
+                    cita.getDentista().getUsuario().getApellidoPaterno(),
+                    cita.getDentista().getUsuario().getApellidoMaterno()
+            );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+        } catch (Exception  e) {
+            log.error("Error al enviar el correo de confirmación al usuario: {}", e.getMessage());
+        }
+
+    }
+    public void enviarReprogramacionCita(Cita cita, LocalDate anteriorFecha, LocalTime anteriorHora) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("ClinicaDentalVillegas<" + emisor + ">");
+            helper.setTo(cita.getDentista().getUsuario().getCorreo());
+            helper.setSubject("Reprogramación de cita");
+
+            String htmlContent = String.format(
+                    MailTemplates.DENTIST_RESCHEDULE_NOTIFICATION,
+                    cita.getDentista().getUsuario().getNombres(),
+                    cita.getDentista().getUsuario().getApellidoPaterno(),
+                    cita.getDentista().getUsuario().getApellidoMaterno(),
+                    cita.getNombres(),
+                    cita.getApellidoPaterno(),
+                    cita.getApellidoMaterno(),
+                    anteriorFecha,
+                    anteriorHora,
+                    cita.getFecha(),
+                    cita.getHora()
+
+            );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+        } catch (Exception  e) {
+            log.error("Error al enviar el correo de reprogramación al dentista: {}", e.getMessage());
+        }
+
+    }
+    public void enviarCancelacionReserva(Cita cita) {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom("ClinicaDentalVillegas<" + emisor + ">");
+            helper.setTo(cita.getDentista().getUsuario().getCorreo());
+            helper.setSubject("Cancelación de cita");
+
+            String htmlContent = String.format(
+                    MailTemplates.DENTIST_CANCELLATION_NOTIFICATION,
+                    cita.getDentista().getUsuario().getNombres(),
+                    cita.getDentista().getUsuario().getApellidoPaterno(),
+                    cita.getDentista().getUsuario().getApellidoMaterno(),
+                    cita.getNombres(),
+                    cita.getApellidoPaterno(),
+                    cita.getApellidoMaterno(),
+                    cita.getFecha(),
+                    cita.getHora(),
+                    cita.getTratamiento().getNombre(),
+                    cita.getObservaciones() != null ? cita.getObservaciones() : ""
+            );
+
+            helper.setText(htmlContent, true);
+            javaMailSender.send(mimeMessage);
+        } catch (Exception  e) {
+            log.error("Error al enviar el correo de cancelación al dentista: {}", e.getMessage());
         }
 
     }
