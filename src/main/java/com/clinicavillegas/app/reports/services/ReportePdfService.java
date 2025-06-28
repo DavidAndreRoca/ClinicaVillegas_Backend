@@ -15,7 +15,13 @@ import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.persistence.criteria.*;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.labels.ItemLabelAnchor;
+import org.jfree.chart.labels.ItemLabelPosition;
+import org.jfree.chart.labels.StandardCategoryItemLabelGenerator;
+import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -24,10 +30,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -118,7 +122,7 @@ public class ReportePdfService {
             }
         }
 
-        return ChartFactory.createBarChart(
+        JFreeChart chart = ChartFactory.createBarChart(
                 "Resumen gráfico",
                 fila,
                 dto.getAgregacion(),
@@ -128,8 +132,19 @@ public class ReportePdfService {
                 true,
                 false
         );
-    }
 
+        CategoryPlot plot = (CategoryPlot) chart.getPlot();
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setDefaultItemLabelGenerator(new StandardCategoryItemLabelGenerator());
+        renderer.setDefaultItemLabelsVisible(true);
+
+        renderer.setDefaultItemLabelFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 12));
+        renderer.setDefaultPositiveItemLabelPosition(
+                new ItemLabelPosition(ItemLabelAnchor.OUTSIDE12, TextAnchor.BASELINE_CENTER)
+        );
+
+        return chart;
+    }
 
     private void agregarGrafico(Document document, JFreeChart chart) throws Exception {
         int width = 500;
@@ -146,16 +161,43 @@ public class ReportePdfService {
     private void agregarTablaResumen(Document document, List<Map<String, Object>> resumen) throws DocumentException {
         if (resumen.isEmpty()) return;
 
-        Set<String> columnas = resumen.getFirst().keySet();
+        List<String> columnas = new ArrayList<>(resumen.getFirst().keySet());
         PdfPTable table = new PdfPTable(columnas.size());
         table.setWidthPercentage(100);
 
         // Headers
         columnas.forEach(col -> table.addCell(new PdfPCell(new Phrase(col))));
 
+        // Inicializar mapa de totales
+        Map<String, Double> totales = new HashMap<>();
+        columnas.forEach(col -> totales.put(col, 0.0));
+
+        // Filas de datos
         for (Map<String, Object> row : resumen) {
             for (String col : columnas) {
-                table.addCell(new PdfPCell(new Phrase(row.get(col).toString())));
+                Object valor = row.get(col);
+                String valorStr = valor != null ? valor.toString() : "";
+                table.addCell(new PdfPCell(new Phrase(valorStr)));
+
+                if (valor instanceof Number number) {
+                    totales.put(col, totales.get(col) + number.doubleValue());
+                }
+            }
+        }
+
+        // Fila de totales
+        for (int i = 0; i < columnas.size(); i++) {
+            String col = columnas.get(i);
+            if (i == 0) {
+                // Primera celda dice "TOTAL"
+                table.addCell(new PdfPCell(new Phrase("TOTAL")));
+            } else {
+                Double total = totales.get(col);
+                if (total != null && total != 0.0) {
+                    table.addCell(new PdfPCell(new Phrase(String.format("%.2f", total))));
+                } else {
+                    table.addCell(new PdfPCell(new Phrase("")));
+                }
             }
         }
 
@@ -165,6 +207,8 @@ public class ReportePdfService {
         document.add(table);
         document.add(Chunk.NEWLINE);
     }
+
+
     private void agregarDetalles(Document document, ReporteRequestDTO dto) throws DocumentException {
         List<Cita> citas = obtenerCitasFiltradas(dto);
 

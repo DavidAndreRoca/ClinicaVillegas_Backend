@@ -20,10 +20,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,7 +44,7 @@ public class ReporteExcelService {
 
         Sheet resumenSheet = workbook.createSheet("Resumen Reporte");
         insertarLogo(workbook, resumenSheet);
-        int rowIndex = 6;
+        int rowIndex = 10;
         rowIndex = agregarEncabezado(resumenSheet, rowIndex, usuarioSolicitante, dto, dateStyle);
 
         List<Map<String, Object>> resumen = reporteService.generarPivotReporte(dto);
@@ -119,8 +116,7 @@ public class ReporteExcelService {
                                CellStyle headerStyle, CellStyle numberStyle, CellStyle textStyle) {
         if (resumen.isEmpty()) return rowIndex;
 
-        Set<String> columnas = resumen.getFirst().keySet();
-
+        List<String> columnas = new ArrayList<>(resumen.getFirst().keySet());
         Row header = sheet.createRow(rowIndex++);
         int colIndex = 0;
         for (String col : columnas) {
@@ -128,29 +124,48 @@ public class ReporteExcelService {
             cell.setCellValue(col);
             cell.setCellStyle(headerStyle);
         }
-
+        Map<String, Double> totales = new HashMap<>();
+        columnas.forEach(col -> totales.put(col, 0.0));
         for (Map<String, Object> rowMap : resumen) {
             Row row = sheet.createRow(rowIndex++);
             colIndex = 0;
             for (String col : columnas) {
                 Cell cell = row.createCell(colIndex++);
                 Object val = rowMap.get(col);
-                if (val instanceof Number) {
-                    cell.setCellValue(((Number) val).doubleValue());
+                if (val instanceof Number number) {
+                    cell.setCellValue(number.doubleValue());
                     cell.setCellStyle(numberStyle);
+                    totales.put(col, totales.get(col) + number.doubleValue());
                 } else {
                     cell.setCellValue(val != null ? val.toString() : "");
                     cell.setCellStyle(textStyle);
                 }
             }
         }
-
+        Row totalRow = sheet.createRow(rowIndex++);
+        for (int i = 0; i < columnas.size(); i++) {
+            String col = columnas.get(i);
+            Cell cell = totalRow.createCell(i);
+            if (i == 0) {
+                cell.setCellValue("TOTAL");
+                cell.setCellStyle(headerStyle);
+            } else {
+                Double total = totales.get(col);
+                if (total != null && total != 0.0) {
+                    cell.setCellValue(total);
+                    cell.setCellStyle(numberStyle);
+                } else {
+                    cell.setCellValue("");
+                    cell.setCellStyle(textStyle);
+                }
+            }
+        }
         for (int i = 0; i < columnas.size(); i++) {
             sheet.autoSizeColumn(i);
         }
-
         return rowIndex + 1;
     }
+
 
     private void agregarDetalles(XSSFWorkbook workbook, ReporteRequestDTO dto,
                                  CellStyle headerStyle, CellStyle dateStyle, CellStyle numberStyle, CellStyle textStyle) {
@@ -202,7 +217,7 @@ public class ReporteExcelService {
             rowIndex++;
         }
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 6; i++) {
             sheet.autoSizeColumn(i);
         }
     }
@@ -283,8 +298,8 @@ public class ReporteExcelService {
         ClientAnchor anchor = helper.createClientAnchor();
         anchor.setCol1(0);
         anchor.setRow1(0);
-        anchor.setCol2(3);
-        anchor.setRow2(5);
+        anchor.setCol2(1);
+        anchor.setRow2(9);
 
         drawing.createPicture(anchor, pictureIdx);
     }
