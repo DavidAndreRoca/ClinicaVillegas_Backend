@@ -48,7 +48,7 @@ public class CookieService {
         ResponseCookie cookie = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("Strict")
+                .sameSite("None")
                 .path(path)
                 .maxAge(maxAge)
                 .build();
