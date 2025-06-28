@@ -102,13 +102,13 @@ public class ReporteExcelService {
 
         if (dto.getFechaDesde() != null){
             row = sheet.createRow(rowIndex++);
-            row.createCell(0).setCellValue("Fecha de inicio");
+            row.createCell(0).setCellValue("Desde:");
             row.createCell(1).setCellValue(dto.getFechaDesde());
             row.getCell(1).setCellStyle(dateStyle);
         }
         if (dto.getFechaHasta() != null){
             row = sheet.createRow(rowIndex++);
-            row.createCell(0).setCellValue("Fecha de fin");
+            row.createCell(0).setCellValue("Hasta:");
             row.createCell(1).setCellValue(dto.getFechaDesde());
             row.getCell(1).setCellStyle(dateStyle);
         }

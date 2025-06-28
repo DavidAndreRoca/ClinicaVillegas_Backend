@@ -89,7 +89,13 @@ public class ReportePdfService {
         document.add(title);
 
         document.add(new Paragraph("Fecha: " + LocalDate.now()));
-        document.add(new Paragraph("Usuario: " + usuarioSolicitante.getNombres() + " " + usuarioSolicitante.getApellidoPaterno()));
+        document.add(new Paragraph(usuarioSolicitante.getRol().name() + ": " + usuarioSolicitante.getNombres() + " " + usuarioSolicitante.getApellidoPaterno()));
+        if (dto.getFechaDesde() != null){
+            document.add(new Paragraph("Desde: " + dto.getFechaDesde()));
+        }
+        if (dto.getFechaHasta() != null){
+            document.add(new Paragraph("Hasta: " + dto.getFechaHasta()));
+        }
         document.add(Chunk.NEWLINE);
     }
     private JFreeChart generarGrafico(List<Map<String, Object>> resumen, ReporteRequestDTO dto) {
