@@ -5,8 +5,11 @@ import com.clinicavillegas.app.chat.dto.request.ComentarioRequest;
 import com.clinicavillegas.app.chat.dto.response.ComentarioResponse;
 import com.clinicavillegas.app.chat.services.ComentarioService;
 import com.clinicavillegas.app.auth.services.JwtService;
+import com.clinicavillegas.app.user.models.Rol;
+import com.clinicavillegas.app.user.models.Usuario;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,11 +21,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest; // Necesitas este import
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -107,20 +114,36 @@ public class ComentarioControllerTest {
 
     @Test
     void testAgregarComentario() throws Exception {
-        // Crear una solicitud válida para agregar un comentario
         ComentarioRequest request = ComentarioRequest.builder()
                 .contenido("Nuevo comentario")
                 .usuarioId(1L)
                 .build();
 
-        // Configurar Mock para el servicio
-        doNothing().when(comentarioService).agregarComentario(any(ComentarioRequest.class));
+        Usuario mockUsuario = Usuario.builder()
+                .id(1L)
+                .rol(Rol.DENTISTA)
+                .build();
 
-        // Realizar la solicitud POST al endpoint /comentarios
+        Authentication authentication = mock(Authentication.class);
+        SecurityContext securityContext = mock(SecurityContext.class);
+
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getPrincipal()).thenReturn(mockUsuario);
+
+        SecurityContextHolder.setContext(securityContext);
+
+        ArgumentCaptor<ComentarioRequest> argumentCaptor = ArgumentCaptor.forClass(ComentarioRequest.class);
+        doNothing().when(comentarioService).agregarComentario(argumentCaptor.capture());
+
         mockMvc.perform(post("/api/comentarios")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Comentario agregado con exito"));
+
+        ComentarioRequest capturedRequest = argumentCaptor.getValue();
+        assertEquals(mockUsuario.getId(), capturedRequest.getUsuarioId());
+
+        SecurityContextHolder.clearContext();
     }
 }
