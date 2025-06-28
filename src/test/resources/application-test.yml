@@ -10,7 +10,7 @@ spring:
   datasource:
     platform: postgres
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/testdb
     username: ${DB_USER}
     password: ${DB_PASSWORD}
 
@@ -33,14 +33,7 @@ spring:
 logging:
   level:
     org.springframework.security: DEBUG
-    org.hibernate.type.descriptor.sql: TRACE
-    org.springframework.mail: DEBUG
-    com.sun.mail: DEBUG
     org.springframework.aop: DEBUG
-    org:
-      springframework:
-        cache: DEBUG
-
 
 app:
   frontend:
@@ -52,10 +45,4 @@ app:
 
   jwt:
     secret: ${JWT_SECRET}
-    expiration-time: 14400
-    expiration-time-refresh: 604800
 
-  cache:
-    user-info:
-      ttl-hours: 1
-      max-size: 500
