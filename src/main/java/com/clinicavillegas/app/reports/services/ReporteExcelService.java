@@ -106,7 +106,7 @@ public class ReporteExcelService {
         if (dto.getFechaHasta() != null){
             row = sheet.createRow(rowIndex++);
             row.createCell(0).setCellValue("Hasta:");
-            row.createCell(1).setCellValue(dto.getFechaDesde());
+            row.createCell(1).setCellValue(dto.getFechaHasta());
             row.getCell(1).setCellStyle(dateStyle);
         }
         return rowIndex + 1;
