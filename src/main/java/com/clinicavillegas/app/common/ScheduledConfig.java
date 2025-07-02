@@ -23,9 +23,9 @@ public class ScheduledConfig {
     @Autowired
     private EmailService emailService;
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 1 0 * * *")
     public void executeTask() {
-        Specification<Cita> specs = CitaSpecification.conFecha(LocalDateTime.now().toLocalDate().plusDays(1))
+        Specification<Cita> specs = CitaSpecification.conFecha(LocalDateTime.now().toLocalDate())
                 .and(CitaSpecification.conEstado("Pendiente"));
         List<Cita> citas = citaRepository.findAll(specs);
         for (Cita cita : citas) {
