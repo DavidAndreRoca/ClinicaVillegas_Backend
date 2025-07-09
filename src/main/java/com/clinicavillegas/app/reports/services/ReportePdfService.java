@@ -217,13 +217,17 @@ public class ReportePdfService {
         ));
 
         for (Map.Entry<List<String>, List<Cita>> entry : agrupado.entrySet()) {
-            Paragraph subtitulo = new Paragraph("Grupo: " + String.join(" - ", entry.getKey()), new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD));
+            Paragraph subtitulo = new Paragraph("Grupo: " + String.join(" - ", entry.getKey()),
+                    new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD));
             subtitulo.setSpacingBefore(10);
             document.add(subtitulo);
 
             PdfPTable table = new PdfPTable(6);
+            table.setWidthPercentage(100);
             Stream.of("Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Observaciones")
                     .forEach(h -> table.addCell(new PdfPCell(new Phrase(h))));
+
+            double totalMonto = 0;
 
             for (Cita c : entry.getValue()) {
                 table.addCell(c.getFecha().toString());
@@ -231,12 +235,27 @@ public class ReportePdfService {
                 table.addCell(c.getTratamiento().getNombre());
                 table.addCell(c.getDentista().getUsuario().getNombres());
                 table.addCell(c.getMonto().toString());
-                table.addCell(c.getObservaciones() != null ? c.getObservaciones():"");
+                table.addCell(c.getObservaciones() != null ? c.getObservaciones() : "");
+
+                totalMonto += c.getMonto().doubleValue();
             }
+
+            // Fila de total
+            PdfPCell celdaTotal = new PdfPCell(new Phrase("TOTAL"));
+            celdaTotal.setColspan(4);
+            celdaTotal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(celdaTotal);
+
+            PdfPCell montoTotal = new PdfPCell(new Phrase(String.format("%.2f", totalMonto)));
+            montoTotal.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(montoTotal);
+
+            table.addCell(""); // Observaciones vacío
 
             document.add(table);
         }
     }
+
     private String obtenerValorCampo(Cita cita, String campo) {
         return switch (campo) {
             case "dentista" -> cita.getDentista().getUsuario().getNombres();
