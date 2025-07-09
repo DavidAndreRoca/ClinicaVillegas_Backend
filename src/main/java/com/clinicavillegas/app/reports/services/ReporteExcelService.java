@@ -190,7 +190,7 @@ public class ReporteExcelService {
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
-
+            double totalMonto = 0;
             for (Cita c : entry.getValue()) {
                 Row row = sheet.createRow(rowIndex++);
                 Cell cell0 = row.createCell(0);
@@ -209,10 +209,16 @@ public class ReporteExcelService {
                 Cell montoCell = row.createCell(4);
                 montoCell.setCellValue(c.getMonto().doubleValue());
                 montoCell.setCellStyle(numberStyle);
+                totalMonto += c.getMonto().doubleValue();
 
                 row.createCell(5).setCellValue(c.getObservaciones());
                 row.getCell(5).setCellStyle(textStyle);
             }
+            Row totalRow = sheet.createRow(rowIndex++);
+            totalRow.createCell(0).setCellValue("Total");
+            totalRow.getCell(0).setCellStyle(textStyle);
+            totalRow.createCell(4).setCellValue(totalMonto);
+            totalRow.getCell(4).setCellStyle(numberStyle);
 
             rowIndex++;
         }
