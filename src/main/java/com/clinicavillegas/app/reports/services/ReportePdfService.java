@@ -24,6 +24,7 @@ import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -169,8 +170,8 @@ public class ReportePdfService {
         columnas.forEach(col -> table.addCell(new PdfPCell(new Phrase(col))));
 
         // Inicializar mapa de totales
-        Map<String, Double> totales = new HashMap<>();
-        columnas.forEach(col -> totales.put(col, 0.0));
+        Map<String, Integer> totales = new HashMap<>();
+        columnas.forEach(col -> totales.put(col, 0));
 
         // Filas de datos
         for (Map<String, Object> row : resumen) {
@@ -180,7 +181,7 @@ public class ReportePdfService {
                 table.addCell(new PdfPCell(new Phrase(valorStr)));
 
                 if (valor instanceof Number number) {
-                    totales.put(col, totales.get(col) + number.doubleValue());
+                    totales.put(col, totales.get(col) + number.intValue());
                 }
             }
         }
@@ -192,9 +193,9 @@ public class ReportePdfService {
                 // Primera celda dice "TOTAL"
                 table.addCell(new PdfPCell(new Phrase("TOTAL")));
             } else {
-                Double total = totales.get(col);
+                Integer total = totales.get(col);
                 if (total != null && total != 0.0) {
-                    table.addCell(new PdfPCell(new Phrase(String.format("%.2f", total))));
+                    table.addCell(new PdfPCell(new Phrase(String.format("%d", total))));
                 } else {
                     table.addCell(new PdfPCell(new Phrase("")));
                 }
@@ -222,12 +223,24 @@ public class ReportePdfService {
             subtitulo.setSpacingBefore(10);
             document.add(subtitulo);
 
-            PdfPTable table = new PdfPTable(6);
+            PdfPTable table = new PdfPTable(7);
             table.setWidthPercentage(100);
-            Stream.of("Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Observaciones")
-                    .forEach(h -> table.addCell(new PdfPCell(new Phrase(h))));
+            Stream.of("Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Estado", "Observaciones")
+                    .forEach(h -> {
+                        Phrase phrase = new Phrase(h);
+                        phrase.setFont(new Font(Font.FontFamily.HELVETICA, Font.DEFAULTSIZE, Font.BOLD));
+                        PdfPCell headerCell = new PdfPCell(phrase);
+                        headerCell.setBackgroundColor(new BaseColor(118, 219, 178));
+                        table.addCell(headerCell);
+                    });
 
-            double totalMonto = 0;
+            double totalMontoAtendida = 0;
+            double totalMontoCancelada = 0;
+            double totalMontoPendiente = 0;
+
+            long totalAtendida = 0;
+            long totalCancelada = 0;
+            long totalPendiente = 0;
 
             for (Cita c : entry.getValue()) {
                 table.addCell(c.getFecha().toString());
@@ -235,22 +248,60 @@ public class ReportePdfService {
                 table.addCell(c.getTratamiento().getNombre());
                 table.addCell(c.getDentista().getUsuario().getNombres());
                 table.addCell(c.getMonto().toString());
+                table.addCell(c.getEstado());
                 table.addCell(c.getObservaciones() != null ? c.getObservaciones() : "");
-
-                totalMonto += c.getMonto().doubleValue();
+                switch (c.getEstado()){
+                    case "Atendida" -> {
+                        totalAtendida++;
+                        totalMontoAtendida += c.getMonto().doubleValue();
+                    }
+                    case "Cancelada" -> {
+                        totalCancelada++;
+                        totalMontoCancelada += c.getMonto().doubleValue();
+                    }
+                    case "Pendiente" -> {
+                        totalPendiente++;
+                        totalMontoPendiente += c.getMonto().doubleValue();
+                    }
+                }
             }
 
             // Fila de total
-            PdfPCell celdaTotal = new PdfPCell(new Phrase("TOTAL"));
-            celdaTotal.setColspan(4);
-            celdaTotal.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(celdaTotal);
+            PdfPCell headerCell1 = new PdfPCell(new Phrase("Total de citas atendidas"));
+            headerCell1.setBackgroundColor(new BaseColor(118, 219, 178));
+            table.addCell(headerCell1);
+            table.addCell(String.valueOf(totalAtendida));
+            table.addCell("");
+            PdfPCell headerCell2 = new PdfPCell(new Phrase("Monto Total"));
+            headerCell2.setBackgroundColor(new BaseColor(118, 219, 178));
+            table.addCell(headerCell2);
+            table.addCell(new PdfPCell(new Phrase(String.format("%.2f", totalMontoAtendida))));
+            table.addCell("");
+            table.addCell("");
 
-            PdfPCell montoTotal = new PdfPCell(new Phrase(String.format("%.2f", totalMonto)));
-            montoTotal.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(montoTotal);
+            PdfPCell headerCell3 = new PdfPCell(new Phrase("Total de citas canceladas"));
+            headerCell3.setBackgroundColor(new BaseColor(118, 219, 178));
+            table.addCell(headerCell3);
+            table.addCell(String.valueOf(totalCancelada));
+            table.addCell("");
+            PdfPCell headerCell4 = new PdfPCell(new Phrase("Monto Total"));
+            headerCell4.setBackgroundColor(new BaseColor(118, 219, 178));
+            table.addCell(headerCell4);
+            table.addCell(new PdfPCell(new Phrase(String.format("%.2f", totalMontoCancelada))));
+            table.addCell("");
+            table.addCell("");
 
-            table.addCell(""); // Observaciones vacío
+            PdfPCell headerCell5 = new PdfPCell(new Phrase("Total de citas pendientes"));
+            headerCell5.setBackgroundColor(new BaseColor(118, 219, 178));
+            table.addCell(headerCell5);
+            table.addCell(String.valueOf(totalPendiente));
+            table.addCell("");
+            PdfPCell headerCell6 = new PdfPCell(new Phrase("Monto Total"));
+            headerCell6.setBackgroundColor(new BaseColor(118, 219, 178));
+            table.addCell(headerCell6);
+            table.addCell(new PdfPCell(new Phrase(String.format("%.2f", totalMontoPendiente))));
+            table.addCell("");
+            table.addCell("");
 
             document.add(table);
         }
@@ -260,6 +311,8 @@ public class ReportePdfService {
         return switch (campo) {
             case "dentista" -> cita.getDentista().getUsuario().getNombres();
             case "tratamiento" -> cita.getTratamiento().getNombre();
+            case "tipoTratamiento" -> cita.getTratamiento().getTipoTratamiento().getNombre();
+            case "tipoDocumento" -> cita.getTipoDocumento().getNombre();
             case "estado" -> cita.getEstado();
             case "sexo" -> cita.getSexo().name();
             default -> "—";

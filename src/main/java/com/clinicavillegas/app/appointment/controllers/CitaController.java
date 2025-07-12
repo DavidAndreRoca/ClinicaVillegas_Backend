@@ -40,7 +40,7 @@ public class CitaController {
             @RequestParam(required = false) Long tratamientoId,
             @RequestParam(required = false) String sexo,
             @RequestParam(required = false, defaultValue = "false") boolean all,
-            @PageableDefault(page = 0, size = 10, sort = "fecha", direction = Sort.Direction.ASC) Pageable pageable) {
+            @PageableDefault(page = 0, size = 10, sort = "fecha", direction = Sort.Direction.DESC) Pageable pageable) {
 
         if (all) {
             List<CitaResponse> citas = citaService.obtenerCitas(usuarioId, dentistaId, estado, fechaInicio, fechaFin, tratamientoId, sexo);

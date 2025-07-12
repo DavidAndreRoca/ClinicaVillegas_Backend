@@ -12,6 +12,7 @@ import jakarta.persistence.criteria.*;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,13 @@ public class ReporteExcelService {
         XSSFCellStyle headerStyle = crearEstiloCabecera(workbook);
         XSSFCellStyle dateStyle = crearEstiloFecha(workbook, createHelper);
         XSSFCellStyle numberStyle = crearEstiloNumerico(workbook);
+        XSSFCellStyle decimalStyle = crearEstiloDecimal(workbook);
         XSSFCellStyle normalStyle = workbook.createCellStyle();
+        normalStyle.setBorderBottom(BorderStyle.THIN);
+        normalStyle.setBorderTop(BorderStyle.THIN);
+        normalStyle.setBorderLeft(BorderStyle.THIN);
+        normalStyle.setBorderRight(BorderStyle.THIN);
+
 
         Sheet resumenSheet = workbook.createSheet("Resumen Reporte");
         insertarLogo(workbook, resumenSheet);
@@ -50,7 +57,8 @@ public class ReporteExcelService {
         List<Map<String, Object>> resumen = reporteService.generarPivotReporte(dto);
         rowIndex = agregarResumen(resumenSheet, rowIndex, resumen, headerStyle, numberStyle, normalStyle);
 
-        agregarDetalles(workbook, dto, headerStyle, dateStyle, numberStyle, normalStyle);
+        agregarDetalles(workbook, dto, headerStyle, dateStyle, numberStyle, normalStyle, decimalStyle);
+
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         workbook.write(out);
@@ -64,7 +72,7 @@ public class ReporteExcelService {
         font.setColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
         font.setBold(true);
         style.setFont(font);
-        style.setFillForegroundColor(IndexedColors.ROYAL_BLUE.getIndex());
+        style.setFillForegroundColor(new XSSFColor(new byte[]{(byte) 0x59, (byte) 0x59, (byte) 0x59}));
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderTop(BorderStyle.THIN);
@@ -76,12 +84,29 @@ public class ReporteExcelService {
     private XSSFCellStyle crearEstiloFecha(XSSFWorkbook workbook, CreationHelper createHelper) {
         XSSFCellStyle style = workbook.createCellStyle();
         style.setDataFormat(createHelper.createDataFormat().getFormat("dd/MM/yyyy"));
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
         return style;
     }
 
     private XSSFCellStyle crearEstiloNumerico(XSSFWorkbook workbook) {
         XSSFCellStyle style = workbook.createCellStyle();
+        style.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
+        return style;
+    }
+    private XSSFCellStyle crearEstiloDecimal(XSSFWorkbook workbook) {
+        XSSFCellStyle style = workbook.createCellStyle();
         style.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
         return style;
     }
 
@@ -168,9 +193,55 @@ public class ReporteExcelService {
 
 
     private void agregarDetalles(XSSFWorkbook workbook, ReporteRequestDTO dto,
-                                 CellStyle headerStyle, CellStyle dateStyle, CellStyle numberStyle, CellStyle textStyle) {
+                                 CellStyle headerStyle, CellStyle dateStyle, CellStyle numberStyle, CellStyle textStyle, CellStyle decimalStyle) {
         Sheet sheet = workbook.createSheet("Detalles Citas");
         int rowIndex = 0;
+
+        XSSFCellStyle atendidaTextStyle = workbook.createCellStyle();
+        atendidaTextStyle.cloneStyleFrom(textStyle);
+        atendidaTextStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+        atendidaTextStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle atendidaDateStyle = workbook.createCellStyle();
+        atendidaDateStyle.cloneStyleFrom(dateStyle);
+        atendidaDateStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+        atendidaDateStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle atendidaNumberStyle = workbook.createCellStyle();
+        atendidaNumberStyle.cloneStyleFrom(decimalStyle);
+        atendidaNumberStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+        atendidaNumberStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle canceladaTextStyle = workbook.createCellStyle();
+        canceladaTextStyle.cloneStyleFrom(textStyle);
+        canceladaTextStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        canceladaTextStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle canceladaDateStyle = workbook.createCellStyle();
+        canceladaDateStyle.cloneStyleFrom(dateStyle);
+        canceladaDateStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        canceladaDateStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle canceladaNumberStyle = workbook.createCellStyle();
+        canceladaNumberStyle.cloneStyleFrom(decimalStyle);
+        canceladaNumberStyle.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        canceladaNumberStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle pendienteTextStyle = workbook.createCellStyle();
+        pendienteTextStyle.cloneStyleFrom(textStyle);
+        pendienteTextStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+        pendienteTextStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle pendienteDateStyle = workbook.createCellStyle();
+        pendienteDateStyle.cloneStyleFrom(dateStyle);
+        pendienteDateStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+        pendienteDateStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        XSSFCellStyle pendienteNumberStyle = workbook.createCellStyle();
+        pendienteNumberStyle.cloneStyleFrom(decimalStyle);
+        pendienteNumberStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+        pendienteNumberStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
 
         List<Cita> citas = obtenerCitasFiltradas(dto);
         Map<List<String>, List<Cita>> agrupado = citas.stream().collect(Collectors.groupingBy(c ->
@@ -184,46 +255,115 @@ public class ReporteExcelService {
             groupCell.setCellStyle(headerStyle);
 
             Row header = sheet.createRow(rowIndex++);
-            String[] headers = {"Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Observaciones"};
+            String[] headers = {"Fecha", "Paciente", "Tratamiento", "Dentista", "Monto", "Estado", "Observaciones"};
             for (int i = 0; i < headers.length; i++) {
                 Cell cell = header.createCell(i);
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(headerStyle);
             }
-            double totalMonto = 0;
+            double totalMontoAtendida = 0;
+            double totalMontoCancelada = 0;
+            double totalMontoPendiente = 0;
+
+            long totalAtendida = 0;
+            long totalCancelada = 0;
+            long totalPendiente = 0;
             for (Cita c : entry.getValue()) {
                 Row row = sheet.createRow(rowIndex++);
+                String estado = c.getEstado();
+
+                CellStyle textStyleEstado;
+                CellStyle dateStyleEstado;
+                CellStyle numberStyleEstado;
+
+                switch (estado) {
+                    case "Atendida" -> {
+                        textStyleEstado = atendidaTextStyle;
+                        dateStyleEstado = atendidaDateStyle;
+                        numberStyleEstado = atendidaNumberStyle;
+                        totalAtendida++;
+                        totalMontoAtendida += c.getMonto().doubleValue();
+                    }
+                    case "Cancelada" -> {
+                        textStyleEstado = canceladaTextStyle;
+                        dateStyleEstado = canceladaDateStyle;
+                        numberStyleEstado = canceladaNumberStyle;
+                        totalCancelada++;
+                        totalMontoCancelada += c.getMonto().doubleValue();
+                    }
+                    case "Pendiente" -> {
+                        textStyleEstado = pendienteTextStyle;
+                        dateStyleEstado = pendienteDateStyle;
+                        numberStyleEstado = pendienteNumberStyle;
+                        totalPendiente++;
+                        totalMontoPendiente += c.getMonto().doubleValue();
+                    }
+                    default -> {
+                        textStyleEstado = textStyle;
+                        dateStyleEstado = dateStyle;
+                        numberStyleEstado = numberStyle;
+                    }
+                }
+
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(java.sql.Date.valueOf(c.getFecha()));
-                cell0.setCellStyle(dateStyle);
+                cell0.setCellStyle(dateStyleEstado);
 
                 row.createCell(1).setCellValue(c.getNombres() + " " + c.getApellidoPaterno());
-                row.getCell(1).setCellStyle(textStyle);
+                row.getCell(1).setCellStyle(textStyleEstado);
 
                 row.createCell(2).setCellValue(c.getTratamiento().getNombre());
-                row.getCell(2).setCellStyle(textStyle);
+                row.getCell(2).setCellStyle(textStyleEstado);
 
                 row.createCell(3).setCellValue(c.getDentista().getUsuario().getNombres());
-                row.getCell(3).setCellStyle(textStyle);
+                row.getCell(3).setCellStyle(textStyleEstado);
 
                 Cell montoCell = row.createCell(4);
                 montoCell.setCellValue(c.getMonto().doubleValue());
-                montoCell.setCellStyle(numberStyle);
-                totalMonto += c.getMonto().doubleValue();
+                montoCell.setCellStyle(numberStyleEstado);
 
-                row.createCell(5).setCellValue(c.getObservaciones());
-                row.getCell(5).setCellStyle(textStyle);
+                row.createCell(5).setCellValue(c.getEstado());
+                row.getCell(5).setCellStyle(textStyleEstado);
+
+                row.createCell(6).setCellValue(c.getObservaciones());
+                row.getCell(6).setCellStyle(textStyleEstado);
             }
-            Row totalRow = sheet.createRow(rowIndex++);
-            totalRow.createCell(0).setCellValue("Total");
-            totalRow.getCell(0).setCellStyle(textStyle);
-            totalRow.createCell(4).setCellValue(totalMonto);
-            totalRow.getCell(4).setCellStyle(numberStyle);
+
+
+            Row totalRowAtendida = sheet.createRow(rowIndex++);
+            totalRowAtendida.createCell(0).setCellValue("Total de citas atendidas");
+            totalRowAtendida.getCell(0).setCellStyle(headerStyle);
+            totalRowAtendida.createCell(1).setCellValue(totalAtendida);
+            totalRowAtendida.getCell(1).setCellStyle(numberStyle);
+            totalRowAtendida.createCell(3).setCellValue("Monto total");
+            totalRowAtendida.getCell(3).setCellStyle(headerStyle);
+            totalRowAtendida.createCell(4).setCellValue(totalMontoAtendida);
+            totalRowAtendida.getCell(4).setCellStyle(decimalStyle);
+
+            Row totalRowCancelada = sheet.createRow(rowIndex++);
+            totalRowCancelada.createCell(0).setCellValue("Total de citas canceladas");
+            totalRowCancelada.getCell(0).setCellStyle(headerStyle);
+            totalRowCancelada.createCell(1).setCellValue(totalCancelada);
+            totalRowCancelada.getCell(1).setCellStyle(numberStyle);
+            totalRowCancelada.createCell(3).setCellValue("Monto total");
+            totalRowCancelada.getCell(3).setCellStyle(headerStyle);
+            totalRowCancelada.createCell(4).setCellValue(totalMontoCancelada);
+            totalRowCancelada.getCell(4).setCellStyle(decimalStyle);
+
+            Row totalRowPendiente = sheet.createRow(rowIndex++);
+            totalRowPendiente.createCell(0).setCellValue("Total de citas pendientes");
+            totalRowPendiente.getCell(0).setCellStyle(headerStyle);
+            totalRowPendiente.createCell(1).setCellValue(totalPendiente);
+            totalRowPendiente.getCell(1).setCellStyle(numberStyle);
+            totalRowPendiente.createCell(3).setCellValue("Monto total");
+            totalRowPendiente.getCell(3).setCellStyle(headerStyle);
+            totalRowPendiente.createCell(4).setCellValue(totalMontoPendiente);
+            totalRowPendiente.getCell(4).setCellStyle(decimalStyle);
 
             rowIndex++;
         }
 
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 7; i++) {
             sheet.autoSizeColumn(i);
         }
     }
@@ -232,6 +372,8 @@ public class ReporteExcelService {
         return switch (campo) {
             case "dentista" -> cita.getDentista().getUsuario().getNombres();
             case "tratamiento" -> cita.getTratamiento().getNombre();
+            case "tipoTratamiento" -> cita.getTratamiento().getTipoTratamiento().getNombre();
+            case "tipoDocumento" -> cita.getUsuario().getTipoDocumento().getNombre();
             case "estado" -> cita.getEstado();
             case "sexo" -> cita.getSexo().name();
             default -> "—";
