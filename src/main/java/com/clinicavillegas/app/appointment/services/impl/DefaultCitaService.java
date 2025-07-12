@@ -140,7 +140,7 @@ public class DefaultCitaService implements CitaService {
         Cita cita = Cita.builder()
                 .fecha(citaRequest.getFecha())
                 .hora(citaRequest.getHora())
-                .monto(citaRequest.getMonto())
+                .monto(tratamiento.getCosto())
                 .nombres(citaRequest.getNombres())
                 .apellidoPaterno(citaRequest.getApellidoPaterno())
                 .apellidoMaterno(citaRequest.getApellidoMaterno())
