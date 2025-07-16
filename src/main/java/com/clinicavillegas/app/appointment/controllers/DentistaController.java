@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.appointment.controllers;
 
+import com.clinicavillegas.app.appointment.dto.request.CancelacionDentistaRequest;
 import com.clinicavillegas.app.appointment.dto.request.DentistaRequest;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.services.DentistaService;
@@ -59,9 +60,9 @@ public class DentistaController {
         return ResponseEntity.ok(Map.of("mensaje", "Dentista actualizado con exito"));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> eliminarDentista(@PathVariable("id") Long id){
-        dentistaService.eliminarDentista(id);
+    @PatchMapping("/{id}/eliminar")
+    public ResponseEntity<Map<String, Object>> eliminarDentista(@PathVariable("id") Long id, @Valid @RequestBody CancelacionDentistaRequest cancelacionDentistaRequest){
+        dentistaService.eliminarDentista(id, cancelacionDentistaRequest);
         return ResponseEntity.ok(Map.of("mensaje", "Dentista eliminado con exito"));
     }
 }

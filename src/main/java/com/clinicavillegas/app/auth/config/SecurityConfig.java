@@ -55,6 +55,7 @@ public class SecurityConfig {
                                 .requestMatchers(HttpMethod.POST, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasRole("ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.PUT, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")
                                 .requestMatchers(HttpMethod.DELETE, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasRole("ADMINISTRADOR")
+                                .requestMatchers(HttpMethod.PATCH, deepMatcher(EndpointPaths.DENTISTA_BASE)).hasRole("ADMINISTRADOR")
 
                                 .requestMatchers(HttpMethod.GET, deepMatcher(EndpointPaths.HORARIO_BASE)).authenticated()
                                 .requestMatchers(HttpMethod.POST, deepMatcher(EndpointPaths.HORARIO_BASE)).hasAnyRole("DENTISTA", "ADMINISTRADOR")

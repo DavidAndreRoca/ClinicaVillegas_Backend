@@ -26,6 +26,9 @@ public class Dentista extends AudityEntity {
     @Column(length = 25, nullable = false)
     private String especializacion;
 
+    @Column(length = 500, nullable = true, name = "motivo_de_cese")
+    private String motivoCese;
+
     @OneToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;

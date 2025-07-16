@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.appointment.services.impl;
 
+import com.clinicavillegas.app.appointment.dto.request.CancelacionDentistaRequest;
 import com.clinicavillegas.app.appointment.dto.request.DentistaRequest;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.mappers.DentistaMapper;
@@ -100,16 +101,30 @@ public class DefaultDentistaService implements DentistaService {
                 () -> new ResourceNotFoundException(Usuario.class, request.getUsuarioId())
         );
 
+        Dentista dentista = dentistaRepository.findByUsuario(usuario)
+                .orElse(null); // Si no se encuentra, es nulo y se creará uno nuevo
+
+        if (dentista != null) {
+            // Si ya existe un dentista para este usuario (incluso si está inactivo), lo reactivamos
+            log.info("Reactivando dentista existente para usuario ID: {}", request.getUsuarioId());
+            dentista.setEstado(true);
+            dentista.setMotivoCese(null); // Limpiar el motivo de cese
+            dentista.setNColegiatura(request.getNColegiatura()); // Actualizar datos si es necesario
+            dentista.setEspecializacion(request.getEspecializacion());
+            dentistaRepository.save(dentista);
+        } else {
+            log.info("Creando nuevo dentista para usuario ID: {}", request.getUsuarioId());
+            dentista = Dentista.builder()
+                    .nColegiatura(request.getNColegiatura())
+                    .especializacion(request.getEspecializacion())
+                    .estado(true)
+                    .usuario(usuario)
+                    .build();
+            dentistaRepository.save(dentista);
+        }
+
         usuario.setRol(Rol.DENTISTA);
         usuarioRepository.save(usuario);
-
-        Dentista dentista = Dentista.builder()
-                .nColegiatura(request.getNColegiatura())
-                .especializacion(request.getEspecializacion())
-                .estado(true)
-                .usuario(usuario)
-                .build();
-        dentistaRepository.save(dentista);
     }
 
     @Caching(evict = {
@@ -145,7 +160,7 @@ public class DefaultDentistaService implements DentistaService {
             @CacheEvict(value = CACHE_ESPECIALIZACIONES_LISTA, allEntries = true),
             @CacheEvict(value = CACHE_DENTISTAS_PAGINADOS, allEntries = true)
     })
-    public void eliminarDentista(Long id) {
+    public void eliminarDentista(Long id, CancelacionDentistaRequest cancelacionDentistaRequest) {
         log.info("Eliminando dentista (y sus horarios) de la base de datos y caché para ID: {}", id);
         Dentista dentista = dentistaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Dentista.class, id)
@@ -161,7 +176,9 @@ public class DefaultDentistaService implements DentistaService {
             usuario.setRol(Rol.PACIENTE);
             usuarioRepository.save(usuario);
         }
-        dentistaRepository.delete(dentista);
+        dentista.setEstado(false);
+        dentista.setMotivoCese(cancelacionDentistaRequest.getMotivoCese());
+        dentistaRepository.save(dentista);
     }
 
     @Cacheable(value = CACHE_ESPECIALIZACIONES_LISTA, key = "'allEspecializaciones'")
