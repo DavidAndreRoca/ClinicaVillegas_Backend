@@ -137,24 +137,29 @@ public class DefaultCitaService implements CitaService {
         Tratamiento tratamiento = tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow(
                 () -> new ResourceNotFoundException(Tratamiento.class, citaRequest.getTratamientoId())
         );
-        Cita cita = Cita.builder()
-                .fecha(citaRequest.getFecha())
-                .hora(citaRequest.getHora())
-                .monto(tratamiento.getCosto())
-                .nombres(citaRequest.getNombres())
-                .apellidoPaterno(citaRequest.getApellidoPaterno())
-                .apellidoMaterno(citaRequest.getApellidoMaterno())
-                .estado("Pendiente")
-                .tipoDocumento(tipoDocumento)
-                .numeroIdentidad(citaRequest.getNumeroIdentidad())
-                .sexo(Sexo.valueOf(citaRequest.getSexo()))
-                .fechaNacimiento(citaRequest.getFechaNacimiento())
-                .dentista(dentista)
-                .usuario(usuario)
-                .tratamiento(tratamiento)
-                .build();
-        emailService.enviarConfirmacionReserva(cita);
-        citaRepository.save(cita);
+        boolean horarioDisponible = validarDisponibilidad(new ValidacionCitaRequest(citaRequest.getFecha().toString(), citaRequest.getHora().toString(), citaRequest.getTratamientoId(), citaRequest.getDentistaId()));
+        if (horarioDisponible){
+            Cita cita = Cita.builder()
+                    .fecha(citaRequest.getFecha())
+                    .hora(citaRequest.getHora())
+                    .monto(tratamiento.getCosto())
+                    .nombres(citaRequest.getNombres())
+                    .apellidoPaterno(citaRequest.getApellidoPaterno())
+                    .apellidoMaterno(citaRequest.getApellidoMaterno())
+                    .estado("Pendiente")
+                    .tipoDocumento(tipoDocumento)
+                    .numeroIdentidad(citaRequest.getNumeroIdentidad())
+                    .sexo(Sexo.valueOf(citaRequest.getSexo()))
+                    .fechaNacimiento(citaRequest.getFechaNacimiento())
+                    .dentista(dentista)
+                    .usuario(usuario)
+                    .tratamiento(tratamiento)
+                    .build();
+            emailService.enviarConfirmacionReserva(cita);
+            citaRepository.save(cita);
+        } else {
+            throw new RuntimeException("Ya hay una cita en este horario");
+        }
     }
 
     @Caching(evict = {
@@ -242,6 +247,8 @@ public class DefaultCitaService implements CitaService {
         LocalTime anteriorHora = cita.getHora();
         cita.setHora(request.getHora());
         cita.setFecha(request.getFecha());
+        cita.setEstado("Pendiente");
+        emailService.enviarConfirmacionReserva(cita);
         emailService.enviarReprogramacionCita(cita, anteriorFecha, anteriorHora);
         citaRepository.save(cita);
     }
