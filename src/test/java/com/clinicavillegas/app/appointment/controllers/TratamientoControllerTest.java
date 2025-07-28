@@ -47,7 +47,7 @@ public class TratamientoControllerTest {
     @TestConfiguration
     static class Config {
         @Bean
-        public TratamientoService tratamientoService() {
+        public TratamientoService tratamientoService() {    
             return Mockito.mock(TratamientoService.class);
         }
 
