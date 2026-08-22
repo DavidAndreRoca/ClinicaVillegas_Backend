@@ -57,7 +57,6 @@ public class ComentarioServiceTest {
         comentarioMock = new Comentario();
         comentarioMock.setId(1L);
         comentarioMock.setContenido("Comentario de prueba");
-        comentarioMock.setUsuario(usuarioMock);// Importante para el DTO
     }
 
     @Test
