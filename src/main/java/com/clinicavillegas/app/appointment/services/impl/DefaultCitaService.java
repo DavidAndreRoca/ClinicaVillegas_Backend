@@ -14,6 +14,7 @@ import com.clinicavillegas.app.appointment.repositories.TratamientoRepository;
 import com.clinicavillegas.app.appointment.services.CitaService;
 import com.clinicavillegas.app.appointment.specifications.CitaSpecification;
 import com.clinicavillegas.app.common.exceptions.ResourceNotFoundException;
+import com.clinicavillegas.app.email.services.EmailService;
 import com.clinicavillegas.app.user.models.Sexo;
 import com.clinicavillegas.app.user.models.TipoDocumento;
 import com.clinicavillegas.app.user.models.Usuario;
@@ -49,13 +50,15 @@ public class DefaultCitaService implements CitaService {
     private final DentistaRepository dentistaRepository;
     private final TratamientoRepository tratamientoRepository;
     private final TipoDocumentoRepository tipoDocumentoRepository;
+    private final EmailService emailService;
 
-    public DefaultCitaService(CitaRepository citaRepository, UsuarioRepository usuarioRepository, DentistaRepository dentistaRepository, TratamientoRepository tratamientoRepository, TipoDocumentoRepository tipoDocumentoRepository) {
+    public DefaultCitaService(CitaRepository citaRepository, UsuarioRepository usuarioRepository, DentistaRepository dentistaRepository, TratamientoRepository tratamientoRepository, TipoDocumentoRepository tipoDocumentoRepository, EmailService emailService) {
         this.citaRepository = citaRepository;
         this.usuarioRepository = usuarioRepository;
         this.dentistaRepository = dentistaRepository;
         this.tratamientoRepository = tratamientoRepository;
         this.tipoDocumentoRepository = tipoDocumentoRepository;
+        this.emailService = emailService;
     }
 
     // Método auxiliar para construir la Specification
@@ -95,7 +98,6 @@ public class DefaultCitaService implements CitaService {
         return citas.stream().map(CitaMapper::toDto).toList();
     }
 
-    // Puedes mantener estos si aún son útiles, aunque el método anterior con Specification es más flexible
     public List<Cita> obtenerCitasPorUsuario(Long usuarioId) {
         log.info("Obteniendo citas por usuario de la base de datos para ID: {}", usuarioId);
         Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(
@@ -135,23 +137,29 @@ public class DefaultCitaService implements CitaService {
         Tratamiento tratamiento = tratamientoRepository.findById(citaRequest.getTratamientoId()).orElseThrow(
                 () -> new ResourceNotFoundException(Tratamiento.class, citaRequest.getTratamientoId())
         );
-        Cita cita = Cita.builder()
-                .fecha(citaRequest.getFecha())
-                .hora(citaRequest.getHora())
-                .monto(citaRequest.getMonto())
-                .nombres(citaRequest.getNombres())
-                .apellidoPaterno(citaRequest.getApellidoPaterno())
-                .apellidoMaterno(citaRequest.getApellidoMaterno())
-                .estado("Pendiente")
-                .tipoDocumento(tipoDocumento)
-                .numeroIdentidad(citaRequest.getNumeroIdentidad())
-                .sexo(Sexo.valueOf(citaRequest.getSexo()))
-                .fechaNacimiento(citaRequest.getFechaNacimiento())
-                .dentista(dentista)
-                .usuario(usuario)
-                .tratamiento(tratamiento)
-                .build();
-        citaRepository.save(cita);
+        boolean horarioDisponible = validarDisponibilidad(new ValidacionCitaRequest(citaRequest.getFecha().toString(), citaRequest.getHora().toString(), citaRequest.getTratamientoId(), citaRequest.getDentistaId()));
+        if (horarioDisponible){
+            Cita cita = Cita.builder()
+                    .fecha(citaRequest.getFecha())
+                    .hora(citaRequest.getHora())
+                    .monto(tratamiento.getCosto())
+                    .nombres(citaRequest.getNombres())
+                    .apellidoPaterno(citaRequest.getApellidoPaterno())
+                    .apellidoMaterno(citaRequest.getApellidoMaterno())
+                    .estado("Pendiente")
+                    .tipoDocumento(tipoDocumento)
+                    .numeroIdentidad(citaRequest.getNumeroIdentidad())
+                    .sexo(Sexo.valueOf(citaRequest.getSexo()))
+                    .fechaNacimiento(citaRequest.getFechaNacimiento())
+                    .dentista(dentista)
+                    .usuario(usuario)
+                    .tratamiento(tratamiento)
+                    .build();
+            emailService.enviarConfirmacionReserva(cita);
+            citaRepository.save(cita);
+        } else {
+            throw new RuntimeException("Ya hay una cita en este horario");
+        }
     }
 
     @Caching(evict = {
@@ -194,12 +202,7 @@ public class DefaultCitaService implements CitaService {
         citaRepository.save(cita);
     }
 
-    // Para atenderCita, eliminarCita y reprogramarCita, donde el request no contiene los IDs de usuario/dentista,
-    // es necesario cargar la cita para obtener esos IDs antes de la ejecución del método y así invalidar cachés.
-    // La forma más práctica con las anotaciones en métodos 'void' es re-evaluar la estrategia para estos dos cachés
-    // o aceptar que solo se invalidarán las listas generales y la cita por ID.
-    // Como acordamos no usar el método auxiliar y no poner anotaciones si no se puede acceder 'externamente',
-    // mantendremos solo la invalidación de la cita por ID y las listas ALL_ENTRIES.
+
     @Caching(evict = {
             @CacheEvict(value = CACHE_CITA_POR_ID, key = "#id"),
             @CacheEvict(value = CACHE_CITAS_LISTA_PAGINADA, allEntries = true),
@@ -226,6 +229,7 @@ public class DefaultCitaService implements CitaService {
         );
         cita.setEstado("Cancelada");
         cita.setObservaciones(observaciones);
+        emailService.enviarCancelacionReserva(cita);
         citaRepository.save(cita);
     }
 
@@ -239,8 +243,13 @@ public class DefaultCitaService implements CitaService {
         Cita cita = citaRepository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException(Cita.class, id)
         );
+        LocalDate anteriorFecha = cita.getFecha();
+        LocalTime anteriorHora = cita.getHora();
         cita.setHora(request.getHora());
         cita.setFecha(request.getFecha());
+        cita.setEstado("Pendiente");
+        emailService.enviarConfirmacionReserva(cita);
+        emailService.enviarReprogramacionCita(cita, anteriorFecha, anteriorHora);
         citaRepository.save(cita);
     }
 

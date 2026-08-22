@@ -1,10 +1,12 @@
 package com.clinicavillegas.app.appointment.controllers;
 
+import com.clinicavillegas.app.appointment.dto.request.CancelacionDentistaRequest;
 import com.clinicavillegas.app.appointment.dto.request.DentistaRequest;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.services.DentistaService;
 import com.clinicavillegas.app.auth.services.CookieService;
 import com.clinicavillegas.app.auth.services.JwtService;
+import com.clinicavillegas.app.common.EndpointPaths;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(DentistaController.class)
 @Import(DentistaControllerTest.Config.class)
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc(addFilters = false) // Deshabilita los filtros de seguridad, si los tienes
 public class DentistaControllerTest {
 
     @Autowired
@@ -49,6 +51,8 @@ public class DentistaControllerTest {
             return Mockito.mock(DentistaService.class);
         }
 
+        // Si tu controlador usa JwtService o CookieService, mockéalos aquí.
+        // Si no los usa directamente, puedes omitirlos.
         @Bean
         public JwtService jwtService() {
             return mock(JwtService.class);
@@ -85,7 +89,7 @@ public class DentistaControllerTest {
                         Mockito.any(Pageable.class)))
                 .thenReturn(mockPage);
 
-        mockMvc.perform(get("/api/dentistas"))
+        mockMvc.perform(get(EndpointPaths.DENTISTA_BASE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1L))
                 .andExpect(jsonPath("$.content[0].ncolegiatura").value("NC12345"))
@@ -98,11 +102,30 @@ public class DentistaControllerTest {
                 .andExpect(jsonPath("$.content[0].correo").value("carlos.gomez@mail.com"))
                 .andExpect(jsonPath("$.content[0].telefono").value("999888777"))
                 .andExpect(jsonPath("$.content[0].sexo").value("M"))
-                // CAMBIO AQUÍ: Ahora las propiedades de paginación están en la raíz del JSON
                 .andExpect(jsonPath("$.size").value(10))
                 .andExpect(jsonPath("$.number").value(0))
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /api/dentistas?all=true - debe devolver una lista de todos los dentistas (sin paginación)")
+    void testObtenerTodosLosDentistas() throws Exception {
+        DentistaResponse response1 = DentistaResponse.builder().id(1L).nombres("Dentista 1").build();
+        DentistaResponse response2 = DentistaResponse.builder().id(2L).nombres("Dentista 2").build();
+        List<DentistaResponse> mockList = List.of(response1, response2);
+
+        Mockito.when(dentistaService.obtenerDentistas(
+                        Mockito.eq(null),
+                        Mockito.eq(null),
+                        Mockito.eq(null)))
+                .thenReturn(mockList);
+
+        mockMvc.perform(get(EndpointPaths.DENTISTA_BASE).param("all", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(1L))
+                .andExpect(jsonPath("$[1].id").value(2L));
     }
 
     @Test
@@ -114,11 +137,14 @@ public class DentistaControllerTest {
                 .usuarioId(10L)
                 .build();
 
-        mockMvc.perform(post("/api/dentistas")
+        mockMvc.perform(post(EndpointPaths.DENTISTA_BASE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Dentista agregado con exito"));
+
+        // Verify that the service method was called
+        Mockito.verify(dentistaService).agregarDentista(request);
     }
 
     @Test
@@ -130,19 +156,32 @@ public class DentistaControllerTest {
                 .usuarioId(20L)
                 .build();
 
-        mockMvc.perform(put("/api/dentistas/1")
+        Long dentistaId = 1L;
+
+        mockMvc.perform(put(EndpointPaths.DENTISTA_BASE + "/{id}", dentistaId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Dentista actualizado con exito"));
+
+        // Verify that the service method was called
+        Mockito.verify(dentistaService).actualizarDentista(dentistaId, request);
     }
 
     @Test
-    @DisplayName("DELETE /api/dentistas/{id} - debe eliminar un dentista")
-    void testEliminarDentista() throws Exception {
-        mockMvc.perform(delete("/api/dentistas/1"))
+    @DisplayName("PATCH /api/dentistas/{id}/eliminar - debe eliminar lógicamente un dentista")
+    void testEliminarDentistaLogicamente() throws Exception {
+        Long dentistaId = 1L;
+        CancelacionDentistaRequest cancelacionRequest = new CancelacionDentistaRequest("Renuncia voluntaria");
+
+        mockMvc.perform(patch(EndpointPaths.DENTISTA_BASE + "/{id}/eliminar", dentistaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(cancelacionRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Dentista eliminado con exito"));
+
+        // Verify that the service method was called with the correct arguments
+        Mockito.verify(dentistaService).eliminarDentista(dentistaId, cancelacionRequest);
     }
 
     @Test
@@ -153,7 +192,7 @@ public class DentistaControllerTest {
         Mockito.when(dentistaService.obtenerEspecialidades())
                 .thenReturn(especialidades);
 
-        mockMvc.perform(get("/api/dentistas/especialidades"))
+        mockMvc.perform(get(EndpointPaths.DENTISTA_BASE + "/especialidades"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0]").value("Ortodoncia"))

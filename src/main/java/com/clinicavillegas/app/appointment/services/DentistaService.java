@@ -1,5 +1,6 @@
 package com.clinicavillegas.app.appointment.services;
 
+import com.clinicavillegas.app.appointment.dto.request.CancelacionDentistaRequest;
 import com.clinicavillegas.app.appointment.dto.request.DentistaRequest;
 import com.clinicavillegas.app.appointment.dto.response.DentistaResponse;
 import com.clinicavillegas.app.appointment.models.Dentista;
@@ -15,6 +16,6 @@ public interface DentistaService {
     Page<DentistaResponse> obtenerDentistasPaginados(String nombre, String especializacion, Long usuarioId, Pageable pageable);
     void agregarDentista(DentistaRequest request);
     void actualizarDentista(Long id, DentistaRequest request);
-    void eliminarDentista(Long id);
+    void eliminarDentista(Long id, CancelacionDentistaRequest cancelacionDentistaRequest);
     List<String> obtenerEspecialidades();
 }

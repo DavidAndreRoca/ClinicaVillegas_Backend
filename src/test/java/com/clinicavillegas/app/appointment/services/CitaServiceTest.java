@@ -8,6 +8,7 @@ import com.clinicavillegas.app.appointment.models.Cita;
 import com.clinicavillegas.app.appointment.models.Tratamiento;
 import com.clinicavillegas.app.appointment.repositories.*;
 import com.clinicavillegas.app.appointment.services.impl.DefaultCitaService;
+import com.clinicavillegas.app.email.services.EmailService;
 import com.clinicavillegas.app.user.repositories.TipoDocumentoRepository;
 import com.clinicavillegas.app.user.repositories.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,12 +42,14 @@ class CitaServiceTest {
     private TratamientoRepository tratamientoRepository;
     @Mock
     private TipoDocumentoRepository tipoDocumentoRepository;
+    @Mock
+    private EmailService emailService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         citaService = new DefaultCitaService(
-                citaRepository, usuarioRepository, dentistaRepository, tratamientoRepository, tipoDocumentoRepository
+                citaRepository, usuarioRepository, dentistaRepository, tratamientoRepository, tipoDocumentoRepository, emailService
         );
     }
 
