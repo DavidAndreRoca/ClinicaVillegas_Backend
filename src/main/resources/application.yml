@@ -57,5 +57,5 @@ app:
 
   cache:
     user-info:
-      ttl-hours: 1
+      ttl-hours: 0.4166666666666667
       max-size: 500

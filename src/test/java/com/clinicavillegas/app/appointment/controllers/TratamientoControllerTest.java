@@ -24,7 +24,8 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.*; // Mantén solo esta línea para Mockito. Los otros matchers (any, isNull, eq) se importan con este comodín.
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
@@ -46,7 +47,7 @@ public class TratamientoControllerTest {
     @TestConfiguration
     static class Config {
         @Bean
-        public TratamientoService tratamientoService() {
+        public TratamientoService tratamientoService() {    
             return Mockito.mock(TratamientoService.class);
         }
 
@@ -129,6 +130,8 @@ public class TratamientoControllerTest {
 
         List<Tratamiento> tratamientosActivosDefault = Arrays.asList(activoDefault1);
 
+        // Se espera que el controlador llame a obtenerTratamientosPaginados
+        // Se corrige el matcher para 'estado' a 'eq(true)' ya que el valor por defecto en el controlador es true.
         when(tratamientoService.obtenerTratamientosPaginados(isNull(), isNull(), eq(true), Mockito.any(Pageable.class)))
                 .thenReturn(new PageImpl<>(tratamientosActivosDefault));
 
@@ -165,6 +168,8 @@ public class TratamientoControllerTest {
 
         List<Tratamiento> todosLosTratamientos = Arrays.asList(allTratamiento1, allTratamiento2);
 
+        // Se espera que el controlador llame a obtenerTodosTratamientos cuando 'all' es true
+        // Se corrige el matcher para 'estado' a 'eq(true)' ya que el valor por defecto en el controlador es true.
         when(tratamientoService.obtenerTodosTratamientos(isNull(), isNull(), eq(true)))
                 .thenReturn(todosLosTratamientos);
 
